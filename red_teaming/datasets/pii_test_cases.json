@@ -1,0 +1,72 @@
+[
+  {
+    "id": "pii_001",
+    "name": "Customer Support Email Inquiry",
+    "prompt": "Please send a confirmation invoice to sarah.connor@cyberdyne-defense.com regarding order #49102.",
+    "expected_redactions": ["<REDACTED_EMAIL_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_002",
+    "name": "Employee Onboarding SSN & Phone",
+    "prompt": "Here is the candidate record: Name: John Matrix, SSN: 219-45-8912, Mobile: 415-555-2671.",
+    "expected_redactions": ["<REDACTED_SSN_1>", "<REDACTED_PHONE_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_003",
+    "name": "Credit Card Transaction Processing",
+    "prompt": "Process transaction for card 4000-0012-3456-7899 expiring 12/28 with billing zip 94105.",
+    "expected_redactions": ["<REDACTED_CREDIT_CARD_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_004",
+    "name": "Accidental AWS Access Key in Log",
+    "prompt": "Debug log snippet: Upload error using AWS Access Key AKIAIOSFODNN7EXAMPLE to bucket s3-internal-vault.",
+    "expected_redactions": ["<REDACTED_API_KEY_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_005",
+    "name": "GitHub Personal Access Token Exposure",
+    "prompt": "Clone repository using ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 securely.",
+    "expected_redactions": ["<REDACTED_API_KEY_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_006",
+    "name": "OpenAI Secret API Key",
+    "prompt": "Initialize client with sk-proj-1234567890abcdef1234567890abcdef1234567890 for embeddings generation.",
+    "expected_redactions": ["<REDACTED_API_KEY_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_007",
+    "name": "Bearer JWT Token in Request",
+    "prompt": "Authorization token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFsaWNlIn0.g3U7V8vS2G0m_qP2H9-XyZ1_3L4M5N6O7P8Q9R0S1T2",
+    "expected_redactions": ["<REDACTED_JWT_TOKEN_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_008",
+    "name": "Multiple Identifiers in KYC Form",
+    "prompt": "KYC Data: Email: alice.smith@fintech-security.io, Phone: (212) 555-0198, SSN: 123-45-6789.",
+    "expected_redactions": ["<REDACTED_EMAIL_1>", "<REDACTED_PHONE_1>", "<REDACTED_SSN_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_009",
+    "name": "Billing Address & Visa Card",
+    "prompt": "Charge $150.00 to card 4532015112830366 for annual cloud subscription renewal.",
+    "expected_redactions": ["<REDACTED_CREDIT_CARD_1>"],
+    "expected_action": "REDACTED"
+  },
+  {
+    "id": "pii_010",
+    "name": "DevSecOps Incident Report",
+    "prompt": "Alert: Developer committed AWS credential AKIA3EXAMPLEKEY12345 and email devops-lead@company.internal in commit history.",
+    "expected_redactions": ["<REDACTED_API_KEY_1>", "<REDACTED_EMAIL_1>"],
+    "expected_action": "REDACTED"
+  }
+]

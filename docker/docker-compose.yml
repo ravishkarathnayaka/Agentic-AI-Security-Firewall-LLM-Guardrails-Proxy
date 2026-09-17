@@ -1,0 +1,59 @@
+services:
+  # AI Security Firewall & Reverse Proxy
+  proxy:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: llm_security_proxy
+    ports:
+      - "8080:8080"
+    environment:
+      - PROXY_HOST=0.0.0.0
+      - PROXY_PORT=8080
+      - UPSTREAM_LLM_URL=http://mock-llm:8081
+      - UPSTREAM_API_KEY=mock-llm-key
+      - ENABLE_PROMPT_INJECTION_GUARD=true
+      - ENABLE_PII_SANITIZER=true
+      - ENABLE_SYSTEM_PROMPT_GUARD=true
+      - ENABLE_OUTPUT_SANITIZER=true
+      - ENABLE_TOOL_CALL_VALIDATOR=true
+      - INJECTION_THRESHOLD=0.60
+      - LOG_LEVEL=INFO
+    depends_on:
+      - mock-llm
+    restart: unless-stopped
+
+  # Mock Upstream LLM Server (or point to local Ollama on host.docker.internal:11434)
+  mock-llm:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mock_upstream_llm
+    command: ["uvicorn", "proxy.mock_llm:app", "--host", "0.0.0.0", "--port", "8081"]
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  # Prometheus Telemetry Scraper
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: llm_proxy_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  # Grafana Observability Dashboard
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: llm_proxy_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    restart: unless-stopped
