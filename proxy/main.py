@@ -86,6 +86,7 @@ async def health_check():
             "system_prompt_guard": settings.ENABLE_SYSTEM_PROMPT_GUARD,
             "output_sanitizer": settings.ENABLE_OUTPUT_SANITIZER,
             "tool_call_validator": settings.ENABLE_TOOL_CALL_VALIDATOR,
+            "rate_limiter": settings.ENABLE_RATE_LIMITER,
         }
     }
 

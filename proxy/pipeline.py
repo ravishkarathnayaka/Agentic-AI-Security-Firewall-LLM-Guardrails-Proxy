@@ -8,6 +8,7 @@ from proxy.config import ProxySettings, get_settings
 from proxy.guards.output_sanitizer import OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer
 from proxy.guards.prompt_injection import PromptInjectionGuard
+from proxy.guards.rate_limiter import RateLimiter
 from proxy.guards.system_prompt_guard import SystemPromptGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
 from proxy.telemetry.audit_logger import audit_logger
@@ -50,6 +51,10 @@ class SecurityPipeline:
         self.system_prompt_guard = SystemPromptGuard(canary_token=self.settings.CANARY_TOKEN)
         self.output_sanitizer = OutputSanitizer()
         self.tool_call_validator = ToolCallValidator()
+        self.rate_limiter = RateLimiter(
+            requests_per_minute=self.settings.RATE_LIMIT_RPM,
+            burst_limit=self.settings.RATE_LIMIT_BURST
+        )
 
     def process_inbound(
         self,
@@ -64,6 +69,35 @@ class SecurityPipeline:
             client_ip=client_ip,
             start_time=start_time
         )
+
+        # 0. Rate Limiting Check (DoS / Brute-force Prevention)
+        if self.settings.ENABLE_RATE_LIMITER:
+            rate_res = self.rate_limiter.check(client_ip)
+            if not rate_res.is_allowed:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="rate_limiter",
+                    violation_code="rate_limit_exceeded",
+                    details=rate_res.details
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": "rate_limit_exceeded",
+                            "message": f"Too Many Requests: {rate_res.details}",
+                            "guard": "rate_limiter",
+                            "retry_after": rate_res.retry_after_seconds,
+                        }
+                    },
+                    context=context
+                )
 
         messages = payload.get("messages", [])
         if not isinstance(messages, list):

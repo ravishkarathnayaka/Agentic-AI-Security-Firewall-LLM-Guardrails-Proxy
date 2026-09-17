@@ -59,6 +59,18 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable agentic tool call argument validator (SSRF & path traversal)"
     )
+    ENABLE_RATE_LIMITER: bool = Field(
+        default=True,
+        description="Enable IP/Client rate limiting against denial of service"
+    )
+    RATE_LIMIT_RPM: int = Field(
+        default=120,
+        description="Maximum requests per minute per client IP"
+    )
+    RATE_LIMIT_BURST: int = Field(
+        default=25,
+        description="Maximum burst requests per second per client IP"
+    )
 
     # Security Thresholds & Canaries
     INJECTION_THRESHOLD: float = Field(
