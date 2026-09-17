@@ -79,14 +79,15 @@ class RedTeamRunner:
 
         # Injections
         injection_data = self._load_json("prompt_injections.json")
-        for item in injection_data:
+        for idx, item in enumerate(injection_data):
             report.injection_total += 1
             payload = {
                 "model": "gpt-4o",
                 "messages": [{"role": "user", "content": item["prompt"]}],
             }
+            headers = {"X-Forwarded-For": f"198.51.100.{idx + 1}"}
             try:
-                resp = await client.post("/v1/chat/completions", json=payload)
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
                 action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
                 passed = (action == item["expected_action"])
                 if action == "BLOCKED":
@@ -112,14 +113,15 @@ class RedTeamRunner:
 
         # Benign Prompts (Measuring False Positive Rate)
         benign_data = self._load_json("benign_prompts.json")
-        for item in benign_data:
+        for idx, item in enumerate(benign_data):
             report.benign_total += 1
             payload = {
                 "model": "gpt-4o",
                 "messages": [{"role": "user", "content": item["prompt"]}],
             }
+            headers = {"X-Forwarded-For": f"198.51.101.{idx + 1}"}
             try:
-                resp = await client.post("/v1/chat/completions", json=payload)
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
                 action = "ALLOWED" if resp.status_code == 200 else "BLOCKED"
                 passed = (action == item["expected_action"])
                 if action == "ALLOWED":
