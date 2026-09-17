@@ -1,0 +1,89 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "LLM Security Firewall & Guardrails Overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "title": "Total Proxy Requests",
+      "type": "stat",
+      "targets": [{ "expr": "sum(llm_proxy_requests_total)", "legendFormat": "Total Requests" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "title": "Blocked Attacks",
+      "type": "stat",
+      "targets": [{ "expr": "sum(llm_proxy_blocked_attacks_total)", "legendFormat": "Blocked Attacks" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }] }
+        }
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } },
+      "title": "PII Entities Redacted",
+      "type": "stat",
+      "targets": [{ "expr": "sum(llm_proxy_pii_redactions_total)", "legendFormat": "PII Redactions" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 5,
+      "title": "Blocked Attacks by Guard Module",
+      "type": "timeseries",
+      "targets": [{ "expr": "sum by (guard) (rate(llm_proxy_blocked_attacks_total[1m]))", "legendFormat": "{{guard}}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 6,
+      "title": "Inspection Latency Overhead (Seconds)",
+      "type": "timeseries",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(llm_proxy_latency_seconds_bucket[5m])) by (le, stage))", "legendFormat": "p95 {{stage}}" }]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-security", "llm-firewall"],
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "LLM Security Guardrails Proxy Telemetry",
+  "uid": "llm-guardrails-telemetry",
+  "version": 1
+}
