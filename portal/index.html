@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic AI Security Firewall & LLM Guardrails Proxy</title>
+  <meta name="description" content="Enterprise-grade AI security reverse proxy mitigating OWASP Top 10 for LLMs with prompt injection detection, PII sanitization, and automated adversarial red teaming.">
+  <meta name="theme-color" content="#f59e0b">
+
+  <!-- Open Graph / Meta -->
+  <meta property="og:title" content="Agentic AI Security Firewall & LLM Guardrails Proxy">
+  <meta property="og:description" content="Enterprise AI Security Reverse Proxy & Real-Time Defense Matrix for LLMs and Autonomous Agents.">
+  <meta property="og:type" content="website">
+
+  <!-- Google Fonts: Syne, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-amber"></div>
+  <div class="ambient-glow glow-crimson"></div>
+  <div class="ambient-glow glow-gold"></div>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="brand-shield">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">AI GUARDRAILS PROXY</span>
+          <span class="brand-sub">Project 10 • Enterprise Portfolio</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#simulator" class="nav-link">Live Simulator</a>
+        <a href="#pipeline" class="nav-link">Pipeline Matrix</a>
+        <a href="#owasp" class="nav-link">OWASP LLM Coverage</a>
+        <a href="#benchmark" class="nav-link">Red-Team Benchmark</a>
+        <a href="#telemetry" class="nav-link">Telemetry</a>
+        <a href="https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy" target="_blank" class="github-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main>
+    <section class="hero-section">
+      <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        <span>INLINE REVERSE PROXY • OWASP TOP 10 (2025/2026) DEFENSE</span>
+      </div>
+
+      <h1 class="hero-title">
+        Agentic AI Security Firewall <br>
+        <span class="gradient-text">&amp; LLM Guardrails Proxy</span>
+      </h1>
+
+      <p class="hero-desc">
+        A high-throughput, inline cybersecurity reverse proxy that inspects inbound prompts and outbound completions in real time. Mitigating prompt injection (LLM01), credential leakage (LLM06), hazardous shell execution (LLM02), and agentic tool SSRF / path traversal (LLM08) with 100% benchmark defense efficacy.
+      </p>
+
+      <!-- Key KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">INJECTION BLOCK RATE</span>
+            <span class="kpi-tag tag-amber">RECALL</span>
+          </div>
+          <div class="kpi-value text-amber">100.0%</div>
+          <div class="kpi-sub">25/25 Zero-Day &amp; DAN Payloads Intercepted</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">BENIGN FALSE POSITIVES</span>
+            <span class="kpi-tag tag-green">PRECISION</span>
+          </div>
+          <div class="kpi-value text-green">0.0%</div>
+          <div class="kpi-sub">15/15 Production Queries Passed Cleanly</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">PII &amp; SECRET REDACTION</span>
+            <span class="kpi-tag tag-gold">LUHN CHECKED</span>
+          </div>
+          <div class="kpi-value text-gold">100.0%</div>
+          <div class="kpi-sub">Cards, SSNs, AWS Keys &amp; JWTs Masked</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">MEDIAN LATENCY OVERHEAD</span>
+            <span class="kpi-tag tag-cyan">ASYNC HTTPX</span>
+          </div>
+          <div class="kpi-value text-cyan">&lt; 0.9ms</div>
+          <div class="kpi-sub">Sub-Millisecond Heuristic Evaluation</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Live Simulator Section -->
+    <section id="simulator" class="section">
+      <div class="section-header">
+        <div class="section-tag">INTERACTIVE SANDBOX</div>
+        <h2 class="section-title">Live Guardrails Inspection Simulator</h2>
+        <p class="section-desc">Experience the inline security interceptor pipeline. Select real adversarial payloads or write your own to watch the multi-layered defense engines evaluate risk in real time.</p>
+      </div>
+
+      <!-- Quick Preset Selector -->
+      <div class="preset-bar">
+        <span class="preset-label">Test Attack Vectors:</span>
+        <button class="preset-btn active" data-preset="dan">DAN 12.0 Jailbreak</button>
+        <button class="preset-btn" data-preset="override">Direct Instruction Override</button>
+        <button class="preset-btn" data-preset="chatml">ChatML Delimiter Breakout</button>
+        <button class="preset-btn" data-preset="base64">Obfuscated Base64 Injection</button>
+        <button class="preset-btn" data-preset="pii">PII &amp; Credit Card Leak</button>
+        <button class="preset-btn" data-preset="ssrf">Agentic SSRF Tool Call</button>
+        <button class="preset-btn" data-preset="traversal">Path Traversal Tool Escape</button>
+        <button class="preset-btn" data-preset="hazardous">Hazardous Command Output</button>
+        <button class="preset-btn" data-preset="benign">Benign Coding Query</button>
+      </div>
+
+      <div class="simulator-grid">
+        <!-- Left: Input Console -->
+        <div class="sim-pane">
+          <div class="pane-header">
+            <span class="pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+              INBOUND PROMPT / AGENT PAYLOAD
+            </span>
+            <span class="badge-role">Role: User</span>
+          </div>
+
+          <div class="pane-body">
+            <textarea id="sim-prompt-input" rows="7" placeholder="Type prompt or attack vector here..."></textarea>
+
+            <div class="tool-call-toggle-row">
+              <label class="checkbox-container">
+                <input type="checkbox" id="sim-tool-call-enabled">
+                <span class="checkmark"></span>
+                <span>Include Agentic Tool Call Arguments</span>
+              </label>
+            </div>
+
+            <div id="sim-tool-call-box" class="tool-call-box" style="display: none;">
+              <div class="tool-call-header">
+                <span>Tool Name:</span>
+                <input type="text" id="sim-tool-name" value="fetch_url" class="tool-input-name">
+              </div>
+              <textarea id="sim-tool-args" rows="3" placeholder='{"url": "http://169.254.169.254/latest/meta-data/"}' class="code-font"></textarea>
+            </div>
+
+            <div class="sim-actions">
+              <button id="sim-run-btn" class="run-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span>Inspect Through Guardrails</span>
+              </button>
+              <button id="sim-reset-btn" class="reset-btn">Reset</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Real-time Inspection Verdict -->
+        <div class="sim-pane">
+          <div class="pane-header">
+            <span class="pane-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              SECURITY FIREWALL VERDICT
+            </span>
+            <span id="sim-status-badge" class="verdict-badge badge-blocked">BLOCKED (400)</span>
+          </div>
+
+          <div class="pane-body">
+            <!-- Inspection Pipeline Flow Steps -->
+            <div class="pipeline-tracker">
+              <div class="step-item" id="step-rate">
+                <div class="step-icon">1</div>
+                <div class="step-text">
+                  <div class="step-title">Rate Limiter</div>
+                  <div class="step-desc" id="step-rate-desc">Passed (1/120 RPM)</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-pii">
+                <div class="step-icon">2</div>
+                <div class="step-text">
+                  <div class="step-title">PII Sanitizer</div>
+                  <div class="step-desc" id="step-pii-desc">No sensitive PII</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-inj">
+                <div class="step-icon">3</div>
+                <div class="step-text">
+                  <div class="step-title">Injection Guard</div>
+                  <div class="step-desc" id="step-inj-desc">Analyzing...</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-canary">
+                <div class="step-icon">4</div>
+                <div class="step-text">
+                  <div class="step-title">Canary &amp; System Guard</div>
+                  <div class="step-desc" id="step-canary-desc">No extraction attempt</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-tool">
+                <div class="step-icon">5</div>
+                <div class="step-text">
+                  <div class="step-title">Tool Validator</div>
+                  <div class="step-desc" id="step-tool-desc">No SSRF / Traversal</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk Score Gauge -->
+            <div class="risk-gauge-container">
+              <div class="gauge-label">
+                <span>Calculated Threat Risk Score</span>
+                <span id="sim-risk-val" class="text-amber">1.00 / 1.00</span>
+              </div>
+              <div class="gauge-bar-bg">
+                <div id="sim-risk-bar" class="gauge-bar-fill fill-crimson" style="width: 100%;"></div>
+              </div>
+            </div>
+
+            <!-- Detailed JSON Response / Findings -->
+            <div class="findings-box">
+              <div class="findings-header">INTERCEPTED ACTION DETAILS</div>
+              <pre id="sim-findings-json" class="code-font"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture & Bidirectional Pipeline Diagram Section -->
+    <section id="pipeline" class="section">
+      <div class="section-header">
+        <div class="section-tag">DEFENSE-IN-DEPTH</div>
+        <h2 class="section-title">Bidirectional Guardrails Pipeline</h2>
+        <p class="section-desc">Every request traverses an optimized, zero-allocation interceptor chain on both inbound ingress and outbound model egress.</p>
+      </div>
+
+      <div class="pipeline-grid">
+        <!-- Inbound Chain -->
+        <div class="pipeline-column">
+          <div class="column-header">
+            <span class="col-pill col-inbound">INBOUND INGRESS</span>
+            <h3>Client Request $\to$ Upstream LLM</h3>
+          </div>
+          <div class="pipeline-cards">
+            <div class="pipe-card">
+              <div class="pipe-num">01</div>
+              <div class="pipe-info">
+                <h4>Token-Bucket Rate Limiter</h4>
+                <p>Tracks sliding-window requests per minute and 1-second burst rates per IP to neutralize brute-force jailbreaking fuzzers (LLM04).</p>
+                <span class="pipe-rule">Limit: 120 RPM • 25 Burst RPS</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">02</div>
+              <div class="pipe-info">
+                <h4>PII Anonymizer &amp; Reversible Session Map</h4>
+                <p>Detects and redacts emails, SSNs, phone numbers, AWS keys, GitHub PATs, JWTs, and credit cards with Luhn checksum verification (LLM06).</p>
+                <span class="pipe-rule">Tokens: &lt;REDACTED_ENTITY_#&gt;</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">03</div>
+              <div class="pipe-info">
+                <h4>Multi-Layered Injection Detector</h4>
+                <p>Scans heuristics (DAN, Stan, overrides), ChatML delimiter breakout tags, zero-width steganographic unicode, and base64 payload decoders (LLM01).</p>
+                <span class="pipe-rule">Threshold: 0.60 Composite Score</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">04</div>
+              <div class="pipe-info">
+                <h4>Canary Leak &amp; System Extraction Guard</h4>
+                <p>Blocks "repeat system prompt verbatim" and monitors secret canaries (<code>CANARY_SEC_TOKEN_9941a8</code>) against extraction (LLM07).</p>
+                <span class="pipe-rule">Active Canary Monitoring</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outbound Chain -->
+        <div class="pipeline-column">
+          <div class="column-header">
+            <span class="col-pill col-outbound">OUTBOUND EGRESS</span>
+            <h3>Upstream LLM $\to$ Verified Response</h3>
+          </div>
+          <div class="pipeline-cards">
+            <div class="pipe-card">
+              <div class="pipe-num">05</div>
+              <div class="pipe-info">
+                <h4>Agentic Tool Call Argument Validator</h4>
+                <p>Validates function arguments emitted by agents. Blocks SSRF targeting cloud metadata (<code>169.254.169.254</code>) and directory path escapes (LLM08).</p>
+                <span class="pipe-rule">RFC1918 • Cloud Metadata • Path Traversal</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">06</div>
+              <div class="pipe-info">
+                <h4>Hazardous Shell Output Sanitizer</h4>
+                <p>Intercepts dangerous commands (<code>rm -rf /</code>, fork bombs, netcat reverse shells, PowerShell encoded commands) and leaked RSA/EC private keys (LLM02).</p>
+                <span class="pipe-rule">Execution Sanitization</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">07</div>
+              <div class="pipe-info">
+                <h4>Session De-Anonymization (Optional)</h4>
+                <p>Optionally re-hydrates masked tokens in responses for verified users, or passes sanitized clean content back to client.</p>
+                <span class="pipe-rule">Context-Preserving Reversal</span>
+              </div>
+            </div>
+
+            <div class="pipe-card">
+              <div class="pipe-num">08</div>
+              <div class="pipe-info">
+                <h4>Structured Telemetry &amp; Prometheus Exporter</h4>
+                <p>Emits structured audit logs with request ID, client IP, latency, and increments Prometheus metric counters at <code>/metrics</code>.</p>
+                <span class="pipe-rule">JSON Lines • OpenTelemetry Compatible</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OWASP Top 10 for LLMs Coverage Section -->
+    <section id="owasp" class="section">
+      <div class="section-header">
+        <div class="section-tag">COMPLIANCE STANDARDS</div>
+        <h2 class="section-title">OWASP Top 10 for LLMs Coverage Matrix</h2>
+        <p class="section-desc">Mapped directly to the latest industry standards for generative AI and autonomous agent systems.</p>
+      </div>
+
+      <div class="owasp-grid">
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM01</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>Prompt Injection</h4>
+          <p>Heuristic matching, ChatML tags (<code>&lt;|im_start|&gt;</code>), base64 payload decoders, and zero-width unicode steganography detection.</p>
+          <div class="owasp-meta">Module: <code>prompt_injection.py</code></div>
+        </div>
+
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM02</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>Insecure Output Handling</h4>
+          <p>Inspects model generations for destructive bash (<code>rm -rf /</code>), reverse shells, fork bombs, encoded PowerShell, and private key leaks.</p>
+          <div class="owasp-meta">Module: <code>output_sanitizer.py</code></div>
+        </div>
+
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM04</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>Model Denial of Service</h4>
+          <p>Sliding-window token bucket tracking requests per minute and per-second burst rates, neutralizing jailbreak brute-forcing.</p>
+          <div class="owasp-meta">Module: <code>rate_limiter.py</code></div>
+        </div>
+
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM06</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>Sensitive Information Disclosure</h4>
+          <p>Redacts credit cards (Luhn validated), SSNs, phone numbers, emails, AWS keys, and JWTs with session reversal mapping.</p>
+          <div class="owasp-meta">Module: <code>pii_sanitizer.py</code></div>
+        </div>
+
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM07</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>System Prompt Leakage</h4>
+          <p>Blocks prompt extraction ("repeat words above verbatim") and monitors internal security canaries.</p>
+          <div class="owasp-meta">Module: <code>system_prompt_guard.py</code></div>
+        </div>
+
+        <div class="owasp-card">
+          <div class="owasp-header">
+            <span class="owasp-id">LLM08</span>
+            <span class="status-shield shield-active">PROTECTED</span>
+          </div>
+          <h4>Excessive Agency &amp; Tool Abuse</h4>
+          <p>Inspects tool call arguments: blocks SSRF to cloud metadata (<code>169.254.169.254</code>) and directory path traversal (<code>../</code>).</p>
+          <div class="owasp-meta">Module: <code>tool_call_validator.py</code></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Red-Teaming Adversarial Benchmark Results -->
+    <section id="benchmark" class="section">
+      <div class="section-header">
+        <div class="section-tag">VERIFIED RESULTS</div>
+        <h2 class="section-title">Automated Adversarial Red-Team Benchmark</h2>
+        <p class="section-desc">Interactive audit log showing 54 automated adversarial payloads executed across 4 security domains.</p>
+      </div>
+
+      <div class="benchmark-container">
+        <div class="bench-filter-bar">
+          <div class="filter-group">
+            <span class="filter-label">Filter Category:</span>
+            <button class="filter-btn active" data-filter="all">All (54)</button>
+            <button class="filter-btn" data-filter="jailbreak">Prompt Injections (25)</button>
+            <button class="filter-btn" data-filter="benign">Benign Queries (15)</button>
+            <button class="filter-btn" data-filter="pii">PII Inputs (10)</button>
+            <button class="filter-btn" data-filter="tool">Agentic Tool Attacks (4)</button>
+          </div>
+          <div class="bench-stats">
+            <span>Pass Rate: <strong class="text-green">100.0%</strong></span>
+            <span>F1 Score: <strong class="text-amber">1.0000</strong></span>
+          </div>
+        </div>
+
+        <!-- Table of benchmark cases -->
+        <div class="table-responsive">
+          <table class="bench-table">
+            <thead>
+              <tr>
+                <th>Test ID</th>
+                <th>Attack Vector Name</th>
+                <th>Category</th>
+                <th>Expected</th>
+                <th>Status</th>
+                <th>Latency</th>
+                <th>Security Action</th>
+              </tr>
+            </thead>
+            <tbody id="bench-table-body">
+              <!-- Rendered dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer Integration & Curl Generator -->
+    <section id="integration" class="section">
+      <div class="section-header">
+        <div class="section-tag">DEVELOPER INTEGRATION</div>
+        <h2 class="section-title">Drop-In OpenAI Compatibility</h2>
+        <p class="section-desc">Works with standard OpenAI Python SDK, LangChain, AutoGen, CrewAI, or cURL without altering your application code.</p>
+      </div>
+
+      <div class="code-tabs-container">
+        <div class="tab-header">
+          <button class="tab-btn active" data-tab="curl">cURL</button>
+          <button class="tab-btn" data-tab="python">Python OpenAI SDK</button>
+          <button class="tab-btn" data-tab="node">Node.js SDK</button>
+          <button class="tab-btn" data-tab="docker">Docker Compose ($0 Stack)</button>
+        </div>
+
+        <div class="tab-content" id="tab-curl">
+          <pre class="code-font"><code><span class="c-comment"># Point your client directly to port 8080:</span>
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {"role": "user", "content": "Hello! Please summarize this quarterly update."}
+    ]
+  }'</code></pre>
+        </div>
+
+        <div class="tab-content" id="tab-python" style="display: none;">
+          <pre class="code-font"><code><span class="c-keyword">from</span> openai <span class="c-keyword">import</span> OpenAI
+
+<span class="c-comment"># Configure OpenAI SDK client with guardrails proxy base_url:</span>
+client = OpenAI(
+    base_url=<span class="c-str">"http://localhost:8080/v1"</span>,
+    api_key=<span class="c-str">"mock-llm-key"</span>  <span class="c-comment"># Or your production API key</span>
+)
+
+response = client.chat.completions.create(
+    model=<span class="c-str">"gpt-4o"</span>,
+    messages=[{<span class="c-str">"role"</span>: <span class="c-str">"user"</span>, <span class="c-str">"content"</span>: <span class="c-str">"Draft a security policy outline."</span>}]
+)
+print(response.choices[0].message.content)</code></pre>
+        </div>
+
+        <div class="tab-content" id="tab-node" style="display: none;">
+          <pre class="code-font"><code><span class="c-keyword">import</span> OpenAI <span class="c-keyword">from</span> <span class="c-str">'openai'</span>;
+
+<span class="c-keyword">const</span> openai = <span class="c-keyword">new</span> OpenAI({
+  baseURL: <span class="c-str">'http://localhost:8080/v1'</span>,
+  apiKey: <span class="c-str">'mock-llm-key'</span>,
+});
+
+<span class="c-keyword">const</span> completion = <span class="c-keyword">await</span> openai.chat.completions.create({
+  model: <span class="c-str">'gpt-4o'</span>,
+  messages: [{ role: <span class="c-str">'user'</span>, content: <span class="c-str">'Explain zero-trust networking.'</span> }],
+});
+console.log(completion.choices[0].message.content);</code></pre>
+        </div>
+
+        <div class="tab-content" id="tab-docker" style="display: none;">
+          <pre class="code-font"><code><span class="c-comment"># Spin up full zero-cost stack (Proxy, Mock LLM, Prometheus, Grafana):</span>
+git clone https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy.git
+cd Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/docker
+docker compose up -d --build
+
+<span class="c-comment"># Services listening:</span>
+<span class="c-comment"># - Guardrails Proxy: http://localhost:8080</span>
+<span class="c-comment"># - Mock Upstream:    http://localhost:8081</span>
+<span class="c-comment"># - Prometheus:       http://localhost:9090</span>
+<span class="c-comment"># - Grafana Dashboard:http://localhost:3000 (admin/admin)</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Complete 10-Part Portfolio Showcase -->
+    <section class="section portfolio-showcase-section">
+      <div class="section-header">
+        <div class="section-tag">COMPREHENSIVE CYBERSECURITY PORTFOLIO</div>
+        <h2 class="section-title">10-Project Enterprise Cybersecurity Portfolio</h2>
+        <p class="section-desc">Spanning Cloud Security, DevSecOps, eBPF Systems Detection, Active Directory Purple Teaming, Zero Trust Architecture, Threat Intelligence, Kubernetes Runtime Defense, Malware Sandboxing, FIDO2 Cryptography, and AI Security.</p>
+      </div>
+
+      <div class="portfolio-grid">
+        <div class="port-card">
+          <div class="port-num">#1</div>
+          <h4>Cloud Threat Detection SOAR</h4>
+          <p>AWS Lambda, Step Functions, Sigma, LocalStack</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#2</div>
+          <h4>Enterprise DevSecOps SLSA 3</h4>
+          <p>Cosign, Syft, Kyverno, Semgrep, Trivy</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#3</div>
+          <h4>eBPF Linux EDR Sensor</h4>
+          <p>eBPF (C), Python BCC, Kernel Tracing, MITRE</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#4</div>
+          <h4>Active Directory Purple Team</h4>
+          <p>Vagrant, Sysmon, Atomic Red Team, Sigma</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#5</div>
+          <h4>Zero Trust Identity Gateway</h4>
+          <p>Envoy Proxy, Keycloak (OIDC), OPA (Rego)</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#6</div>
+          <h4>Threat Intelligence Scoring</h4>
+          <p>STIX 2.1, Python, FastAPI, Redis, Suricata</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#7</div>
+          <h4>K8s Runtime Security &amp; IR</h4>
+          <p>Kubernetes (Kind), Falco (eBPF), NetworkPolicy</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#8</div>
+          <h4>Automated Malware Sandbox</h4>
+          <p>Volatility 3, pefile, YARA, Suricata</p>
+        </div>
+        <div class="port-card">
+          <div class="port-num">#9</div>
+          <h4>FIDO2 WebAuthn Gateway</h4>
+          <p>WebAuthn, Cryptography, Modern IAM</p>
+        </div>
+        <div class="port-card port-highlight">
+          <div class="port-num">#10</div>
+          <h4>AI Firewall &amp; Guardrails Proxy</h4>
+          <p>FastAPI, OWASP Top 10 for LLMs, Red Teaming</p>
+          <span class="active-pill">CURRENT PROJECT</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <div class="footer-title">Agentic AI Security Firewall &amp; LLM Guardrails Proxy</div>
+        <p>Architected and developed by <strong>Ravishka Prabhath Rathnayaka</strong>.</p>
+        <p class="license-text">Released under the MIT License • Fully open source.</p>
+      </div>
+      <div class="footer-right">
+        <a href="https://github.com/ravishkarathnayaka" target="_blank" class="footer-link">GitHub Profile</a>
+        <a href="https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy" target="_blank" class="footer-link">Repository</a>
+        <a href="#simulator" class="footer-link">Live Simulator</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

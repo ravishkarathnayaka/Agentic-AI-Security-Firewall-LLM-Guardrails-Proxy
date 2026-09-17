@@ -81,6 +81,11 @@ sequenceDiagram
 │   ├── Dockerfile                 # Multi-stage production container
 │   ├── prometheus.yml             # Prometheus scrape configuration
 │   └── .env.example               # Example environment variables
+├── portal/                        # Interactive Obsidian Amber Web Showcase & Live Simulator
+│   ├── index.html                 # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
+│   ├── styles.css                 # Obsidian Amber / Molten Plasma theme styling & responsive grid
+│   ├── app.js                     # In-browser guardrails execution engine & live telemetry
+│   └── vercel.json                # Subdirectory Vercel deployment configuration
 ├── proxy/
 │   ├── __init__.py
 │   ├── main.py                    # FastAPI application exposing OpenAI-compatible /v1/chat/completions
@@ -110,6 +115,7 @@ sequenceDiagram
 │   ├── test_pii_sanitizer.py      # Unit tests verifying PII redaction and de-anonymization
 │   ├── test_tool_call_validator.py# Unit tests verifying tool argument validation (SSRF, path traversal)
 │   └── test_pipeline.py           # End-to-end integration tests for FastAPI endpoints
+├── vercel.json                    # Root Vercel deployment config with security headers & portal mapping
 └── README.md                      # Architecture documentation, benchmark report, and setup guide
 ```
 
@@ -389,6 +395,30 @@ make report
 # Or on Windows PowerShell:
 .\scripts\run_local.ps1 -Report
 ```
+
+### 4. Interactive Frontend Web Portal & Vercel Deployment
+The repository includes a modern web portal styled in an **Obsidian Amber & Molten Plasma** theme (`#f59e0b`, `#ef4444`, `#07070b`). It features an in-browser live guardrails simulator (with real-time Luhn verification, injection scoring, and SSRF detection), an OWASP Top 10 interactive grid, benchmark telemetry cards, and portfolio navigation.
+
+#### View Locally:
+```bash
+# Option A: Built-in Python static server
+python -m http.server 3001 --directory portal
+
+# Option B: Direct browser opening
+start portal/index.html  # Windows PowerShell
+open portal/index.html   # macOS
+```
+Then navigate to `http://localhost:3001`.
+
+#### Deploy to Vercel in 1-Click:
+The project contains pre-configured `vercel.json` files with strict production security headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
+
+- **Via Vercel Web UI**: Import your GitHub repository `Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy`. Vercel automatically detects `vercel.json` and serves `portal/` seamlessly.
+- **Via Vercel CLI**:
+  ```bash
+  npm i -g vercel
+  vercel --prod
+  ```
 
 ---
 
