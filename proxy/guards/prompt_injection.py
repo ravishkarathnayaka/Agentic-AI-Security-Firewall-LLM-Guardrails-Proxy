@@ -38,6 +38,10 @@ class PromptInjectionGuard:
         # Extraction / Verbatim leaks
         r"(?i)\bprint\s+(?:your\s+)?(?:exact\s+)?(?:initial|system|original|base)\s+(?:instructions|prompt|rules)\s+(?:verbatim|in\s+full|word\s+for\s+word)\b",
         r"(?i)\brepeat\s+(?:the\s+)?(?:words|text|instructions)\s+above\s+(?:verbatim|starting|word\s+for\s+word)\b",
+        # Indirect Prompt Injection & RAG Poisoning
+        r"(?i)\[(?:system\s+(?:note|message|instruction|command|override)|important\s+instruction)[^\]]*\]",
+        r"(?i)\bspecial\s+instructions\s+to\s+(?:the\s+)?(?:reviewer|assistant|model|llm|evaluator)\b",
+        r"(?i)\binstruction\s+to\s+(?:the\s+)?(?:ai|model|assistant)\s*:\s*ignore\b",
     ]
 
     # Delimiter manipulation and prompt structure hijacking
