@@ -10,6 +10,7 @@
 param (
     [switch]$Install,
     [switch]$Run,
+    [switch]$Portal,
     [switch]$Test,
     [switch]$Benchmark,
     [switch]$Report,
@@ -26,6 +27,11 @@ if ($Install) {
 elseif ($Run) {
     Write-Host "[*] Starting LLM Security Guardrails Proxy on :8080..." -ForegroundColor Green
     python -m uvicorn proxy.main:app --host 0.0.0.0 --port 8080 --reload
+}
+elseif ($Portal) {
+    Write-Host "[*] Serving Obsidian Amber web portal at http://localhost:3001..." -ForegroundColor Green
+    Start-Process "http://localhost:3001"
+    python -m http.server 3001 --directory portal
 }
 elseif ($Test) {
     Write-Host "[*] Running pytest test suite..." -ForegroundColor Cyan
@@ -44,5 +50,5 @@ elseif ($Docker) {
     docker compose -f docker/docker-compose.yml up -d --build
 }
 else {
-    Write-Host "Usage: .\scripts\run_local.ps1 [-Install | -Run | -Test | -Benchmark | -Report | -Docker]" -ForegroundColor Yellow
+    Write-Host "Usage: .\scripts\run_local.ps1 [-Install | -Run | -Portal | -Test | -Benchmark | -Report | -Docker]" -ForegroundColor Yellow
 }
