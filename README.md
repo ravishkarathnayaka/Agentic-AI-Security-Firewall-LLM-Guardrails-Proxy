@@ -2,6 +2,7 @@
 
 [![CI Pipeline](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/ci.yml)
 [![Security Scan](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/security-scan.yml/badge.svg)](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/security-scan.yml)
+[![Live Showcase Portal](https://img.shields.io/badge/Live%20Showcase-Vercel%20Portal-f59e0b?logo=vercel&logoColor=white)](https://agentic-ai-security-firewallllm-gua.vercel.app)
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![OWASP Top 10 for LLMs](https://img.shields.io/badge/OWASP-LLM%20Top%2010%20(2025)-red.svg)](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
@@ -398,6 +399,8 @@ make report
 
 ### 4. Interactive Frontend Web Portal & Vercel Deployment
 The repository includes a modern web portal styled in an **Obsidian Amber & Molten Plasma** theme (`#f59e0b`, `#ef4444`, `#07070b`). It features an in-browser live guardrails simulator (with real-time Luhn verification, injection scoring, and SSRF detection), an OWASP Top 10 interactive grid, benchmark telemetry cards, and portfolio navigation.
+
+- **🌐 Live Production URL:** [https://agentic-ai-security-firewallllm-gua.vercel.app](https://agentic-ai-security-firewallllm-gua.vercel.app)
 
 #### View Locally:
 ```bash
