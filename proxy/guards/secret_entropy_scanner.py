@@ -26,17 +26,20 @@ class SecretEntropyScanner:
 
     # Candidate token regex: matches long contiguous alphanumeric / base64 / hex strings
     TOKEN_PATTERN = re.compile(r"\b[A-Za-z0-9_\-\.\+/=]{18,}\b")
+    HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
 
     # Common safe token exceptions (e.g., standard URLs, long English words, git commit hashes in docs)
     SAFE_PREFIXES = ("http://", "https://", "application/", "text/")
 
     def __init__(
         self,
-        entropy_threshold: float = 4.25,
+        base64_entropy_threshold: float = 4.20,
+        hex_entropy_threshold: float = 3.60,
         min_length: int = 20,
         risk_threshold: float = 0.70,
     ) -> None:
-        self.entropy_threshold = entropy_threshold
+        self.base64_entropy_threshold = base64_entropy_threshold
+        self.hex_entropy_threshold = hex_entropy_threshold
         self.min_length = min_length
         self.risk_threshold = risk_threshold
 
@@ -75,22 +78,25 @@ class SecretEntropyScanner:
             if ent > max_entropy:
                 max_entropy = ent
 
-            if ent >= self.entropy_threshold and len(token) >= self.min_length:
-                # Mask the token for logging (show first 4 and last 4)
-                masked = f"{token[:4]}...{token[-4:]} (entropy: {ent:.2f})"
+            # Determine threshold based on alphabet character set
+            is_hex = bool(self.HEX_PATTERN.match(token))
+            effective_threshold = self.hex_entropy_threshold if is_hex else self.base64_entropy_threshold
+
+            if ent >= effective_threshold and len(token) >= self.min_length:
+                token_type = "hex" if is_hex else "base64/token"
+                masked = f"{token[:4]}...{token[-4:]} ({token_type}, entropy: {ent:.2f})"
                 detected.append(masked)
 
         score = 0.0
         if detected:
-            # Scale score based on number of detected secrets and entropy level
-            score = min(1.0, 0.70 + (0.10 * len(detected)) + max(0.0, (max_entropy - 4.25) * 0.2))
+            score = min(1.0, 0.75 + (0.10 * (len(detected) - 1)))
 
         is_blocked = score >= self.risk_threshold
         details = ""
         if is_blocked:
             details = (
                 f"High-entropy secret leakage detected: {len(detected)} candidate credential token(s) "
-                f"exceeding Shannon entropy threshold of {self.entropy_threshold:.2f} bits/char."
+                f"identified exceeding character-set entropy thresholds."
             )
 
         return EntropyScanResult(
