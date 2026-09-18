@@ -82,7 +82,7 @@
             <span class="kpi-tag tag-amber">RECALL</span>
           </div>
           <div class="kpi-value text-amber">100.0%</div>
-          <div class="kpi-sub">25/25 Zero-Day &amp; DAN Payloads Intercepted</div>
+          <div class="kpi-sub">54/54 Zero-Day, Homoglyph &amp; DAN Payloads Intercepted</div>
         </div>
 
         <div class="kpi-card">
@@ -127,10 +127,13 @@
         <span class="preset-label">Test Attack Vectors:</span>
         <button class="preset-btn active" data-preset="dan">DAN 12.0 Jailbreak</button>
         <button class="preset-btn" data-preset="override">Direct Instruction Override</button>
+        <button class="preset-btn" data-preset="homoglyph">Homoglyph Spoofing</button>
+        <button class="preset-btn" data-preset="multilingual">Multilingual Jailbreak</button>
         <button class="preset-btn" data-preset="chatml">ChatML Delimiter Breakout</button>
         <button class="preset-btn" data-preset="base64">Obfuscated Base64 Injection</button>
         <button class="preset-btn" data-preset="pii">PII &amp; Credit Card Leak</button>
         <button class="preset-btn" data-preset="ssrf">Agentic SSRF Tool Call</button>
+        <button class="preset-btn" data-preset="mcp">MCP Command Injection</button>
         <button class="preset-btn" data-preset="traversal">Path Traversal Tool Escape</button>
         <button class="preset-btn" data-preset="hazardous">Hazardous Command Output</button>
         <button class="preset-btn" data-preset="benign">Benign Coding Query</button>
@@ -424,18 +427,19 @@
       <div class="section-header">
         <div class="section-tag">VERIFIED RESULTS</div>
         <h2 class="section-title">Automated Adversarial Red-Team Benchmark</h2>
-        <p class="section-desc">Interactive audit log showing 54 automated adversarial payloads executed across 4 security domains.</p>
+        <p class="section-desc">Interactive audit log showing 69 automated adversarial payloads executed across 5 security domains.</p>
       </div>
 
       <div class="benchmark-container">
         <div class="bench-filter-bar">
           <div class="filter-group">
             <span class="filter-label">Filter Category:</span>
-            <button class="filter-btn active" data-filter="all">All (54)</button>
+            <button class="filter-btn active" data-filter="all">All (69)</button>
             <button class="filter-btn" data-filter="jailbreak">Prompt Injections (25)</button>
             <button class="filter-btn" data-filter="benign">Benign Queries (15)</button>
             <button class="filter-btn" data-filter="pii">PII Inputs (10)</button>
             <button class="filter-btn" data-filter="tool">Agentic Tool Attacks (4)</button>
+            <button class="filter-btn" data-filter="advanced">Advanced Threats (15)</button>
           </div>
           <div class="bench-stats">
             <span>Pass Rate: <strong class="text-green">100.0%</strong></span>
