@@ -1,6 +1,7 @@
 """LLM Security Guardrails package."""
 
 from proxy.guards.anomaly_detector import AnomalyCheckResult, AnomalyDetector
+from proxy.guards.canary_generator import CanaryCheckResult, DynamicCanaryService
 from proxy.guards.homoglyph_detector import HomoglyphCheckResult, HomoglyphDetector
 from proxy.guards.multilingual_guard import MultilingualCheckResult, MultilingualGuard
 from proxy.guards.output_sanitizer import OutputSanitizeResult, OutputSanitizer
@@ -18,6 +19,8 @@ __all__ = [
     "HomoglyphCheckResult",
     "MultilingualGuard",
     "MultilingualCheckResult",
+    "DynamicCanaryService",
+    "CanaryCheckResult",
     "AnomalyDetector",
     "AnomalyCheckResult",
     "PIISanitizer",
