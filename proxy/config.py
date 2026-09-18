@@ -59,6 +59,30 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable agentic tool call argument validator (SSRF & path traversal)"
     )
+    ENABLE_HOMOGLYPH_GUARD: bool = Field(
+        default=True,
+        description="Enable homoglyph spoofing and leetspeak deobfuscation detector"
+    )
+    ENABLE_ENTROPY_SCANNER: bool = Field(
+        default=True,
+        description="Enable Shannon entropy secret scanner for output leakage defense"
+    )
+    ENABLE_ANOMALY_GUARD: bool = Field(
+        default=True,
+        description="Enable structural anomaly and glitch token repetition detector"
+    )
+    ENABLE_MULTILINGUAL_GUARD: bool = Field(
+        default=True,
+        description="Enable multilingual jailbreak and translation evasion detector"
+    )
+    ENABLE_MCP_VALIDATOR: bool = Field(
+        default=True,
+        description="Enable Model Context Protocol (MCP) tool execution validator"
+    )
+    CANARY_SECRET_KEY: str = Field(
+        default="llm-guardrails-proxy-canary-secret-salt-2026",
+        description="Secret key used to compute HMAC signatures for dynamic canaries"
+    )
     ENABLE_RATE_LIMITER: bool = Field(
         default=True,
         description="Enable IP/Client rate limiting against denial of service"

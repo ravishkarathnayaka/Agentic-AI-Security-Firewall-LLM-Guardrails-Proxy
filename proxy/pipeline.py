@@ -5,10 +5,16 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from proxy.config import ProxySettings, get_settings
+from proxy.guards.anomaly_detector import AnomalyDetector
+from proxy.guards.canary_generator import DynamicCanaryService
+from proxy.guards.homoglyph_detector import HomoglyphDetector
+from proxy.guards.mcp_validator import MCPValidator
+from proxy.guards.multilingual_guard import MultilingualGuard
 from proxy.guards.output_sanitizer import OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer
 from proxy.guards.prompt_injection import PromptInjectionGuard
 from proxy.guards.rate_limiter import RateLimiter
+from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
 from proxy.guards.system_prompt_guard import SystemPromptGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
 from proxy.telemetry.audit_logger import audit_logger
@@ -55,6 +61,12 @@ class SecurityPipeline:
             requests_per_minute=self.settings.RATE_LIMIT_RPM,
             burst_limit=self.settings.RATE_LIMIT_BURST
         )
+        self.homoglyph_detector = HomoglyphDetector()
+        self.entropy_scanner = SecretEntropyScanner()
+        self.anomaly_detector = AnomalyDetector()
+        self.multilingual_guard = MultilingualGuard()
+        self.mcp_validator = MCPValidator()
+        self.dynamic_canary = DynamicCanaryService(secret_key=self.settings.CANARY_SECRET_KEY)
 
     def process_inbound(
         self,
@@ -212,6 +224,94 @@ class SecurityPipeline:
                         context=context
                     )
 
+            # 3b. Structural Anomaly & Glitch Token Guard
+            if self.settings.ENABLE_ANOMALY_GUARD and text_to_check:
+                anom_res = self.anomaly_detector.evaluate(text_to_check)
+                if anom_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="anomaly_detector",
+                        violation_code="structural_anomaly_detected",
+                        details=anom_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "structural_anomaly_detected",
+                                "message": f"Inbound prompt blocked by Anomaly Detector: {anom_res.details}",
+                                "guard": "anomaly_detector",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3c. Homoglyph Spoofing & Leetspeak Guard
+            if self.settings.ENABLE_HOMOGLYPH_GUARD and text_to_check:
+                homo_res = self.homoglyph_detector.evaluate(text_to_check)
+                if homo_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="homoglyph_detector",
+                        violation_code="homoglyph_obfuscation_detected",
+                        details=homo_res.details,
+                        metadata={"message_index": msg_idx, "risk_score": homo_res.score}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "homoglyph_obfuscation_detected",
+                                "message": f"Inbound prompt blocked by Homoglyph Guard: {homo_res.details}",
+                                "guard": "homoglyph_detector",
+                                "risk_score": homo_res.score,
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3d. Multilingual Jailbreak Guard
+            if self.settings.ENABLE_MULTILINGUAL_GUARD and text_to_check:
+                multi_res = self.multilingual_guard.evaluate(text_to_check)
+                if multi_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="multilingual_guard",
+                        violation_code="multilingual_jailbreak_detected",
+                        details=multi_res.details,
+                        metadata={"message_index": msg_idx, "languages": multi_res.detected_languages}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "multilingual_jailbreak_detected",
+                                "message": f"Inbound prompt blocked by Multilingual Guard: {multi_res.details}",
+                                "guard": "multilingual_guard",
+                            }
+                        },
+                        context=context
+                    )
+
             # Reconstruct message with sanitized content
             new_msg = dict(msg)
             if isinstance(content, str):
@@ -325,6 +425,45 @@ class SecurityPipeline:
                         }
                     )
 
+            # 1b. MCP Tool Call Validation
+            if self.settings.ENABLE_MCP_VALIDATOR and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", {})
+                    if isinstance(t_args, str):
+                        try:
+                            import json
+                            t_args = json.loads(t_args)
+                        except Exception:
+                            t_args = {"raw": t_args}
+                    mcp_res = self.mcp_validator.validate_tool_call(t_name, t_args if isinstance(t_args, dict) else {})
+                    if not mcp_res.is_valid:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="mcp_validator",
+                            violation_code="mcp_policy_violation",
+                            details=mcp_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": "mcp_policy_violation",
+                                    "message": f"Agentic tool call blocked by MCP Validator: {mcp_res.details}",
+                                    "guard": "mcp_validator",
+                                    "tool": t_name,
+                                }
+                            }
+                        )
+
             # 2. Canary Leak Check
             if self.settings.ENABLE_SYSTEM_PROMPT_GUARD and content:
                 sys_res = self.system_prompt_guard.inspect_completion(content)
@@ -352,6 +491,32 @@ class SecurityPipeline:
                         }
                     )
 
+                # 2b. Dynamic Cryptographic Canary Check
+                canary_res = self.dynamic_canary.inspect_text(content)
+                if canary_res.is_leaked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="dynamic_canary_guard",
+                        violation_code="dynamic_canary_token_leak",
+                        details=canary_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "dynamic_canary_token_leak",
+                                "message": f"Outbound completion blocked by Dynamic Canary Guard: {canary_res.details}",
+                                "guard": "dynamic_canary_guard",
+                            }
+                        }
+                    )
+
             # 3. Output Sanitizer (Hazardous commands & secrets)
             if self.settings.ENABLE_OUTPUT_SANITIZER and content:
                 out_res = self.output_sanitizer.inspect(content)
@@ -375,6 +540,33 @@ class SecurityPipeline:
                                 "code": out_res.violation_code or "insecure_output_detected",
                                 "message": f"Outbound response blocked by Output Sanitizer: {out_res.details}",
                                 "guard": "output_sanitizer",
+                            }
+                        }
+                    )
+
+            # 3b. High-Entropy Secret Scanner
+            if self.settings.ENABLE_ENTROPY_SCANNER and content:
+                entropy_res = self.entropy_scanner.evaluate(content)
+                if entropy_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="secret_entropy_scanner",
+                        violation_code="secret_entropy_leak_detected",
+                        details=entropy_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "secret_entropy_leak_detected",
+                                "message": f"Outbound response blocked by Secret Entropy Scanner: {entropy_res.details}",
+                                "guard": "secret_entropy_scanner",
                             }
                         }
                     )
