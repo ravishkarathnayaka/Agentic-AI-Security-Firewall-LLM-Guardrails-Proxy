@@ -3,6 +3,7 @@
 from proxy.guards.anomaly_detector import AnomalyCheckResult, AnomalyDetector
 from proxy.guards.canary_generator import CanaryCheckResult, DynamicCanaryService
 from proxy.guards.homoglyph_detector import HomoglyphCheckResult, HomoglyphDetector
+from proxy.guards.mcp_validator import MCPValidationResult, MCPValidator
 from proxy.guards.multilingual_guard import MultilingualCheckResult, MultilingualGuard
 from proxy.guards.output_sanitizer import OutputSanitizeResult, OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer, PIISanitizeResult
@@ -21,6 +22,8 @@ __all__ = [
     "MultilingualCheckResult",
     "DynamicCanaryService",
     "CanaryCheckResult",
+    "MCPValidator",
+    "MCPValidationResult",
     "AnomalyDetector",
     "AnomalyCheckResult",
     "PIISanitizer",
