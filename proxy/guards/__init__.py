@@ -1,5 +1,6 @@
 """LLM Security Guardrails package."""
 
+from proxy.guards.homoglyph_detector import HomoglyphCheckResult, HomoglyphDetector
 from proxy.guards.output_sanitizer import OutputSanitizeResult, OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer, PIISanitizeResult
 from proxy.guards.prompt_injection import InjectionCheckResult, PromptInjectionGuard
@@ -10,6 +11,8 @@ from proxy.guards.tool_call_validator import ToolCallValidator, ToolValidationRe
 __all__ = [
     "PromptInjectionGuard",
     "InjectionCheckResult",
+    "HomoglyphDetector",
+    "HomoglyphCheckResult",
     "PIISanitizer",
     "PIISanitizeResult",
     "SystemPromptGuard",
