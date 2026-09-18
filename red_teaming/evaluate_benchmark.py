@@ -46,6 +46,7 @@ async def run_evaluation():
     print(f"| {'Benign Pass-Through':<30} | {report.benign_total:<8} | {report.benign_allowed:<8} | {report.benign_fpr * 100:>6.1f}% False Positives|")
     print(f"| {'PII Sanitization (LLM06)':<30} | {report.pii_total:<8} | {report.pii_redacted:<8} | {report.pii_redaction_rate * 100:>6.1f}% Redaction Rate|")
     print(f"| {'Tool Abuse & SSRF (LLM07)':<30} | {report.tool_total:<8} | {report.tool_blocked:<8} | {report.tool_block_rate * 100:>6.1f}% Block Rate   |")
+    print(f"| {'Advanced Threats (LLM01/04/08)':<30} | {report.advanced_total:<8} | {report.advanced_blocked:<8} | {report.advanced_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics
@@ -70,6 +71,7 @@ async def run_evaluation():
             "benign_fpr": report.benign_fpr,
             "pii_redaction_rate": report.pii_redaction_rate,
             "tool_block_rate": report.tool_block_rate,
+            "advanced_block_rate": report.advanced_block_rate,
             "precision": report.precision,
             "recall": report.recall,
             "f1_score": report.f1_score,

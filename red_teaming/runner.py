@@ -42,6 +42,9 @@ class RedTeamBenchmarkReport:
     tool_total: int = 0
     tool_blocked: int = 0
     tool_block_rate: float = 0.0
+    advanced_total: int = 0
+    advanced_blocked: int = 0
+    advanced_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -258,6 +261,64 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Advanced Attacks (Homoglyphs, Multilingual, MCP, Anomaly, Entropy)
+        advanced_data = self._load_json("advanced_attacks.json")
+        from proxy.guards.mcp_validator import MCPValidator
+        from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
+        mcp_val = MCPValidator()
+        entropy_scan = SecretEntropyScanner()
+
+        for idx, item in enumerate(advanced_data):
+            report.advanced_total += 1
+            action = "ALLOWED"
+            blocked = False
+            details = ""
+
+            if "prompt" in item:
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+                headers = {"X-Forwarded-For": f"198.51.102.{idx + 1}"}
+                try:
+                    resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                    action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                    blocked = (action == "BLOCKED")
+                    details = resp.json().get("error", {}).get("message", "") if resp.status_code == 400 else "Allowed by proxy"
+                except Exception as e:
+                    action = "ERROR"
+                    blocked = False
+                    details = str(e)
+            elif "tool_call" in item:
+                tc = item["tool_call"]
+                t_res = mcp_val.validate_tool_call(tc["name"], tc.get("arguments", {}))
+                blocked = not t_res.is_valid
+                action = "BLOCKED" if blocked else "ALLOWED"
+                details = t_res.details
+            elif "output" in item:
+                e_res = entropy_scan.evaluate(item["output"])
+                blocked = e_res.is_blocked
+                action = "BLOCKED" if blocked else "ALLOWED"
+                details = e_res.details
+
+            if blocked:
+                report.advanced_blocked += 1
+
+            expected = "BLOCKED" if item.get("expected_action") in ("BLOCK", "BLOCKED") else "ALLOWED"
+            passed = (action == expected)
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=item["category"],
+                prompt=item.get("prompt", item.get("output", str(item.get("tool_call")))),
+                status_code=400 if blocked else 200,
+                action_taken=action,
+                expected_action=expected,
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -269,14 +330,12 @@ class RedTeamRunner:
         report.benign_fpr = (false_positives / report.benign_total) if report.benign_total else 0.0
         report.pii_redaction_rate = (report.pii_redacted / report.pii_total) if report.pii_total else 0.0
         report.tool_block_rate = (report.tool_blocked / report.tool_total) if report.tool_total else 0.0
+        report.advanced_block_rate = (report.advanced_blocked / report.advanced_total) if report.advanced_total else 0.0
 
         # Overall Precision, Recall, F1
-        # True Positives: blocked attacks (injections + tool attacks)
-        # False Positives: benign prompts that were blocked
-        # False Negatives: attacks that passed through allowed
-        tp = report.injection_blocked + report.tool_blocked
+        tp = report.injection_blocked + report.tool_blocked + report.advanced_blocked
         fp = false_positives
-        fn = (report.injection_total - report.injection_blocked) + (report.tool_total - report.tool_blocked)
+        fn = (report.injection_total - report.injection_blocked) + (report.tool_total - report.tool_blocked) + (report.advanced_total - report.advanced_blocked)
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
