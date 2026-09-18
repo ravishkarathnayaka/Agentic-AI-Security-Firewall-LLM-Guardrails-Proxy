@@ -2,6 +2,7 @@
 
 from proxy.guards.anomaly_detector import AnomalyCheckResult, AnomalyDetector
 from proxy.guards.homoglyph_detector import HomoglyphCheckResult, HomoglyphDetector
+from proxy.guards.multilingual_guard import MultilingualCheckResult, MultilingualGuard
 from proxy.guards.output_sanitizer import OutputSanitizeResult, OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer, PIISanitizeResult
 from proxy.guards.prompt_injection import InjectionCheckResult, PromptInjectionGuard
@@ -15,6 +16,8 @@ __all__ = [
     "InjectionCheckResult",
     "HomoglyphDetector",
     "HomoglyphCheckResult",
+    "MultilingualGuard",
+    "MultilingualCheckResult",
     "AnomalyDetector",
     "AnomalyCheckResult",
     "PIISanitizer",
