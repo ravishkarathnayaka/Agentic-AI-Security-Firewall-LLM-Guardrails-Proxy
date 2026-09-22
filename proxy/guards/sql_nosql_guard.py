@@ -40,8 +40,8 @@ class SqlNoSqlInjectionGuard:
 
     NOSQL_INJECTION_PATTERNS = [
         # MongoDB query selector injection ($where, $regex, $gt)
-        (r"['\"]?\$where['\"]?\s*:\s*['\"][^'\"]*['\"]", "nosql_where_clause_injection"),
-        (r"['\"]?\$(?:gt|gte|ne|in|nin|regex)['\"]?\s*:\s*['\"]?[^'\"}\]]+['\"]?", "nosql_operator_tampering"),
+        (r"(?i)(?:\\*['\"])?\$where(?:\\*['\"])?\s*:\s*", "nosql_where_clause_injection"),
+        (r"(?i)(?:\\*['\"])?\$(?:gt|gte|ne|in|nin|regex)(?:\\*['\"])?\s*:\s*", "nosql_operator_tampering"),
         # JavaScript evaluation in Mongo
         (r"(?i)\bfunction\s*\(\s*\)\s*\{.*?return\s+true", "nosql_js_function_injection"),
     ]

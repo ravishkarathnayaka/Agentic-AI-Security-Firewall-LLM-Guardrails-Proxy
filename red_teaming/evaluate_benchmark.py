@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Attacks (4)\n")
+    print("Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Attacks (4), Advanced Threats (15), DB/AST Attacks (15)\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -47,6 +47,7 @@ async def run_evaluation():
     print(f"| {'PII Sanitization (LLM06)':<30} | {report.pii_total:<8} | {report.pii_redacted:<8} | {report.pii_redaction_rate * 100:>6.1f}% Redaction Rate|")
     print(f"| {'Tool Abuse & SSRF (LLM07)':<30} | {report.tool_total:<8} | {report.tool_blocked:<8} | {report.tool_block_rate * 100:>6.1f}% Block Rate   |")
     print(f"| {'Advanced Threats (LLM01/04/08)':<30} | {report.advanced_total:<8} | {report.advanced_blocked:<8} | {report.advanced_block_rate * 100:>6.1f}% Block Rate   |")
+    print(f"| {'Database & AST Threats (LLM02)':<30} | {report.db_ast_total:<8} | {report.db_ast_blocked:<8} | {report.db_ast_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics
@@ -72,6 +73,7 @@ async def run_evaluation():
             "pii_redaction_rate": report.pii_redaction_rate,
             "tool_block_rate": report.tool_block_rate,
             "advanced_block_rate": report.advanced_block_rate,
+            "db_ast_block_rate": report.db_ast_block_rate,
             "precision": report.precision,
             "recall": report.recall,
             "f1_score": report.f1_score,

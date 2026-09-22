@@ -45,6 +45,9 @@ class RedTeamBenchmarkReport:
     advanced_total: int = 0
     advanced_blocked: int = 0
     advanced_block_rate: float = 0.0
+    db_ast_total: int = 0
+    db_ast_blocked: int = 0
+    db_ast_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -319,6 +322,80 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Database, AST, and Padding Attacks
+        db_ast_data = self._load_json("database_and_ast_attacks.json")
+        for idx, item in enumerate(db_ast_data):
+            report.db_ast_total += 1
+            action = "ALLOWED"
+            blocked = False
+            details = ""
+            cat = item.get("category", "")
+
+            if cat == "database_tool_injection":
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": "Execute database action"}],
+                    "tool_calls": [
+                        {
+                            "id": f"call_db_{idx}",
+                            "type": "function",
+                            "function": {
+                                "name": "sql_query_executor",
+                                "arguments": json.dumps({"query": item["prompt"]})
+                            }
+                        }
+                    ]
+                }
+            elif cat == "code_sandbox_breakout":
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": "Run script in sandbox"}],
+                    "tool_calls": [
+                        {
+                            "id": f"call_ast_{idx}",
+                            "type": "function",
+                            "function": {
+                                "name": "python_interpreter",
+                                "arguments": json.dumps({"code": item["prompt"]})
+                            }
+                        }
+                    ]
+                }
+            else:  # token_padding_evasion
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+
+            headers = {"X-Forwarded-For": f"198.51.103.{idx + 1}"}
+            try:
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                blocked = (action == "BLOCKED")
+                details = resp.json().get("error", {}).get("message", "") if resp.status_code == 400 else "Allowed by proxy"
+            except Exception as e:
+                action = "ERROR"
+                blocked = False
+                details = str(e)
+
+            if blocked:
+                report.db_ast_blocked += 1
+
+            expected = "BLOCKED" if item.get("expected_action") in ("BLOCK", "BLOCKED") else "ALLOWED"
+            passed = (action == expected)
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=item["category"],
+                prompt=item.get("prompt")[:80],
+                status_code=400 if blocked else 200,
+                action_taken=action,
+                expected_action=expected,
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -331,11 +408,17 @@ class RedTeamRunner:
         report.pii_redaction_rate = (report.pii_redacted / report.pii_total) if report.pii_total else 0.0
         report.tool_block_rate = (report.tool_blocked / report.tool_total) if report.tool_total else 0.0
         report.advanced_block_rate = (report.advanced_blocked / report.advanced_total) if report.advanced_total else 0.0
+        report.db_ast_block_rate = (report.db_ast_blocked / report.db_ast_total) if report.db_ast_total else 0.0
 
         # Overall Precision, Recall, F1
-        tp = report.injection_blocked + report.tool_blocked + report.advanced_blocked
+        tp = report.injection_blocked + report.tool_blocked + report.advanced_blocked + report.db_ast_blocked
         fp = false_positives
-        fn = (report.injection_total - report.injection_blocked) + (report.tool_total - report.tool_blocked) + (report.advanced_total - report.advanced_blocked)
+        fn = (
+            (report.injection_total - report.injection_blocked)
+            + (report.tool_total - report.tool_blocked)
+            + (report.advanced_total - report.advanced_blocked)
+            + (report.db_ast_total - report.db_ast_blocked)
+        )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
