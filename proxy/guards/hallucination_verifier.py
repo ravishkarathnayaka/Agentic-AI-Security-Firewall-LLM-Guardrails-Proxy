@@ -31,8 +31,8 @@ class HallucinationVerifier:
         self._citation_pattern = re.compile(r"\[(?:Doc-?|Source-?)?(\d+)\]", re.IGNORECASE)
 
     def _extract_urls(self, text: str) -> List[str]:
-        """Extract normalized URLs from text."""
-        return self._url_pattern.findall(text)
+        """Extract normalized URLs from text, stripping trailing sentence punctuation."""
+        return [u.rstrip(".,;:!?") for u in self._url_pattern.findall(text)]
 
     def _tokenize(self, text: str) -> Set[str]:
         """Extract lowercase content words of length >= 3."""
