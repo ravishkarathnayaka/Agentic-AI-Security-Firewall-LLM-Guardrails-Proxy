@@ -7,6 +7,11 @@ from typing import Any, Dict, List, Optional, Tuple
 from proxy.config import ProxySettings, get_settings
 from proxy.guards.anomaly_detector import AnomalyDetector
 from proxy.guards.canary_generator import DynamicCanaryService
+from proxy.guards.anomaly_detector import AnomalyDetector
+from proxy.guards.canary_generator import DynamicCanaryService
+from proxy.guards.code_sandbox_policy import CodeSandboxPolicyInspector
+from proxy.guards.differential_leak_guard import DifferentialLeakGuard
+from proxy.guards.hallucination_verifier import HallucinationVerifier
 from proxy.guards.homoglyph_detector import HomoglyphDetector
 from proxy.guards.mcp_validator import MCPValidator
 from proxy.guards.multilingual_guard import MultilingualGuard
@@ -15,8 +20,12 @@ from proxy.guards.pii_sanitizer import PIISanitizer
 from proxy.guards.prompt_injection import PromptInjectionGuard
 from proxy.guards.rate_limiter import RateLimiter
 from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
+from proxy.guards.sql_nosql_guard import SqlNoSqlInjectionGuard
 from proxy.guards.system_prompt_guard import SystemPromptGuard
+from proxy.guards.token_padding_guard import TokenPaddingGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
+from proxy.guards.watermark_detector import WatermarkClassificationDetector
+from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
 
@@ -67,6 +76,13 @@ class SecurityPipeline:
         self.multilingual_guard = MultilingualGuard()
         self.mcp_validator = MCPValidator()
         self.dynamic_canary = DynamicCanaryService(secret_key=self.settings.CANARY_SECRET_KEY)
+        self.code_sandbox_policy = CodeSandboxPolicyInspector()
+        self.differential_leak_guard = DifferentialLeakGuard(protected_prompts=[self.settings.CANARY_TOKEN])
+        self.hallucination_verifier = HallucinationVerifier()
+        self.sql_guard = SqlNoSqlInjectionGuard()
+        self.token_padding_guard = TokenPaddingGuard()
+        self.watermark_detector = WatermarkClassificationDetector()
+        self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
         self,
@@ -143,6 +159,65 @@ class SecurityPipeline:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
+
+            # 0b. Token Padding and Delimiter Evasion Guard
+            if self.settings.ENABLE_TOKEN_PADDING_GUARD and text_to_check:
+                pad_res = self.token_padding_guard.inspect(text_to_check)
+                if pad_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="token_padding_guard",
+                        violation_code=pad_res.violation_code,
+                        details=pad_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": pad_res.violation_code or "token_padding_detected",
+                                "message": f"Inbound prompt blocked by Token Padding Guard: {pad_res.details}",
+                                "guard": "token_padding_guard",
+                            }
+                        },
+                        context=context
+                    )
+                text_to_check = pad_res.normalized_content
+
+            # 0c. Sensitive Document Watermark and Classification Guard
+            if self.settings.ENABLE_WATERMARK_GUARD and text_to_check:
+                wm_res = self.watermark_detector.inspect(text_to_check)
+                if wm_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="watermark_detector",
+                        violation_code=wm_res.violation_code,
+                        details=wm_res.details,
+                        metadata={"message_index": msg_idx, "level": wm_res.classification_level}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": wm_res.violation_code or "confidential_watermark_detected",
+                                "message": f"Inbound prompt blocked by Watermark Guard: {wm_res.details}",
+                                "guard": "watermark_detector",
+                            }
+                        },
+                        context=context
+                    )
 
             # 1. PII Sanitization
             if self.settings.ENABLE_PII_SANITIZER and text_to_check:
@@ -464,6 +539,89 @@ class SecurityPipeline:
                             }
                         )
 
+            # 1c. SQL / NoSQL Injection Check on Tool Arguments
+            if self.settings.ENABLE_SQL_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", "")
+                    if isinstance(t_args, dict):
+                        import json
+                        t_args = json.dumps(t_args)
+                    sql_res = self.sql_guard.inspect(str(t_args))
+                    if sql_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="sql_nosql_guard",
+                            violation_code=sql_res.violation_code,
+                            details=sql_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": sql_res.violation_code,
+                                    "message": f"Agentic tool call blocked by SQL/NoSQL Guard: {sql_res.details}",
+                                    "guard": "sql_nosql_guard",
+                                    "tool": t_name,
+                                }
+                            }
+                        )
+
+            # 1d. AST Code Sandbox Policy Check
+            if self.settings.ENABLE_AST_SANDBOX_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "").lower()
+                    if any(term in t_name for term in ["code", "python", "exec", "eval", "script", "run"]):
+                        t_args = fn.get("arguments", "")
+                        code_str = ""
+                        if isinstance(t_args, dict):
+                            code_str = t_args.get("code") or t_args.get("script") or str(t_args)
+                        elif isinstance(t_args, str):
+                            try:
+                                import json
+                                parsed_args = json.loads(t_args)
+                                if isinstance(parsed_args, dict):
+                                    code_str = parsed_args.get("code") or parsed_args.get("script") or t_args
+                                else:
+                                    code_str = t_args
+                            except Exception:
+                                code_str = t_args
+                        ast_res = self.code_sandbox_policy.inspect(code_str)
+                        if ast_res.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=context.request_id,
+                                client_ip=context.client_ip,
+                                direction="outbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="code_sandbox_policy",
+                                violation_code=ast_res.violation_code,
+                                details=ast_res.details,
+                                metadata={"tool_name": fn.get("name", "")}
+                            )
+                            return OutboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": ast_res.violation_code,
+                                        "message": f"Agentic tool call blocked by Code Sandbox Policy: {ast_res.details}",
+                                        "guard": "code_sandbox_policy",
+                                        "tool": fn.get("name", ""),
+                                    }
+                                }
+                            )
+
             # 2. Canary Leak Check
             if self.settings.ENABLE_SYSTEM_PROMPT_GUARD and content:
                 sys_res = self.system_prompt_guard.inspect_completion(content)
@@ -567,6 +725,61 @@ class SecurityPipeline:
                                 "code": "secret_entropy_leak_detected",
                                 "message": f"Outbound response blocked by Secret Entropy Scanner: {entropy_res.details}",
                                 "guard": "secret_entropy_scanner",
+                            }
+                        }
+                    )
+
+            # 3c. Differential N-Gram System Prompt Leakage Check
+            if self.settings.ENABLE_DIFFERENTIAL_LEAK_GUARD and content:
+                diff_res = self.differential_leak_guard.inspect(content)
+                if diff_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="differential_leak_guard",
+                        violation_code=diff_res.violation_code,
+                        details=diff_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": diff_res.violation_code or "differential_prompt_leak",
+                                "message": f"Outbound completion blocked by Differential Leak Guard: {diff_res.details}",
+                                "guard": "differential_leak_guard",
+                            }
+                        }
+                    )
+
+            # 3d. Outbound Sensitive Document Watermark Check
+            if self.settings.ENABLE_WATERMARK_GUARD and content:
+                wm_res = self.watermark_detector.inspect(content)
+                if wm_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="watermark_detector",
+                        violation_code=wm_res.violation_code,
+                        details=wm_res.details,
+                        metadata={"level": wm_res.classification_level}
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": wm_res.violation_code,
+                                "message": f"Outbound completion blocked by Watermark Guard: {wm_res.details}",
+                                "guard": "watermark_detector",
                             }
                         }
                     )

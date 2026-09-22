@@ -79,6 +79,30 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable Model Context Protocol (MCP) tool execution validator"
     )
+    ENABLE_SQL_GUARD: bool = Field(
+        default=True,
+        description="Enable SQL and NoSQL injection detector for agentic tools"
+    )
+    ENABLE_AST_SANDBOX_GUARD: bool = Field(
+        default=True,
+        description="Enable AST code sandbox policy inspector for generated code"
+    )
+    ENABLE_DIFFERENTIAL_LEAK_GUARD: bool = Field(
+        default=True,
+        description="Enable differential n-gram system prompt leakage detector"
+    )
+    ENABLE_HALLUCINATION_GUARD: bool = Field(
+        default=False,
+        description="Enable RAG hallucination and citation grounding verifier"
+    )
+    ENABLE_TOKEN_PADDING_GUARD: bool = Field(
+        default=True,
+        description="Enable token padding and delimiter evasion guard"
+    )
+    ENABLE_WATERMARK_GUARD: bool = Field(
+        default=True,
+        description="Enable sensitive document watermark and classification detector"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
