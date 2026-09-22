@@ -61,14 +61,15 @@ sequenceDiagram
 
 | OWASP ID | Vulnerability Category | Mitigation Strategy in Guardrails Proxy | Implementing Module |
 |---|---|---|---|
-| **LLM01** | **Prompt Injection & Adversarial Evasion** | Multi-layered heuristic signature detection, ChatML delimiter escaping, base64 payload decoding, zero-width unicode steganography, homoglyph normalization (Cyrillic/Greek confusables), and leetspeak deobfuscation. | [`proxy/guards/prompt_injection.py`](proxy/guards/prompt_injection.py)<br>[`proxy/guards/homoglyph_detector.py`](proxy/guards/homoglyph_detector.py)<br>[`proxy/guards/multilingual_guard.py`](proxy/guards/multilingual_guard.py) |
-| **LLM02** | **Insecure Output Handling & Secret Leakage** | Inspects outbound model responses for hazardous shell commands (`rm -rf`, reverse shells, fork bombs, encoded PowerShell), private keys, and high Shannon entropy credential blobs (adaptive hex/base64 thresholds). | [`proxy/guards/output_sanitizer.py`](proxy/guards/output_sanitizer.py)<br>[`proxy/guards/secret_entropy_scanner.py`](proxy/guards/secret_entropy_scanner.py) |
-| **LLM04** | **Model Denial of Service & Anomaly Flooding** | Enforces sliding-window token-bucket rate limiting per IP/client, alongside structural anomaly detection (glitch token repetition, repetitive n-gram floods, and single-token payload spikes). | [`proxy/guards/rate_limiter.py`](proxy/guards/rate_limiter.py)<br>[`proxy/guards/anomaly_detector.py`](proxy/guards/anomaly_detector.py) |
-| **LLM06** | **Sensitive Information Disclosure** | Real-time PII anonymization using regex and Luhn checksum validation for credit cards, SSNs, phone numbers, emails, AWS keys, GitHub tokens, and JWTs. Supports reversible session mapping. | [`proxy/guards/pii_sanitizer.py`](proxy/guards/pii_sanitizer.py) |
-| **LLM07** | **System Prompt Leakage / Insecure Extraction** | Detects extraction attempts ("print your initial prompt verbatim") and actively injects/monitors cryptographically signed HMAC dynamic canary tokens to stop prompt disclosure. | [`proxy/guards/system_prompt_guard.py`](proxy/guards/system_prompt_guard.py)<br>[`proxy/guards/canary_generator.py`](proxy/guards/canary_generator.py) |
-| **LLM08** | **Excessive Agency & MCP Tool Abuse** | Inspects agentic function arguments: enforces Model Context Protocol (MCP) schema compliance, tool whitelisting, SSRF protection against cloud metadata (`169.254.169.254`), and path traversal. | [`proxy/guards/tool_call_validator.py`](proxy/guards/tool_call_validator.py)<br>[`proxy/guards/mcp_validator.py`](proxy/guards/mcp_validator.py) |
+| **LLM01** | **Prompt Injection & Adversarial Evasion** | Multi-layered heuristic signature detection, ChatML delimiter escaping, base64 payload decoding, zero-width unicode steganography, homoglyph normalization (Cyrillic/Greek confusables), leetspeak deobfuscation, and token padding/delimiter flood detection. | [`proxy/guards/prompt_injection.py`](proxy/guards/prompt_injection.py)<br>[`proxy/guards/homoglyph_detector.py`](proxy/guards/homoglyph_detector.py)<br>[`proxy/guards/multilingual_guard.py`](proxy/guards/multilingual_guard.py)<br>[`proxy/guards/token_padding_guard.py`](proxy/guards/token_padding_guard.py) |
+| **LLM02** | **Insecure Output Handling & Agent Tool Injection** | Inspects outbound model responses for hazardous shell commands (`rm -rf`, reverse shells, fork bombs, encoded PowerShell), private keys, high Shannon entropy credential blobs, and SQL/NoSQL injection in agent database tool calls. | [`proxy/guards/output_sanitizer.py`](proxy/guards/output_sanitizer.py)<br>[`proxy/guards/secret_entropy_scanner.py`](proxy/guards/secret_entropy_scanner.py)<br>[`proxy/guards/sql_nosql_guard.py`](proxy/guards/sql_nosql_guard.py) |
+| **LLM04** | **Model Denial of Service & Anomaly Flooding** | Enforces sliding-window token-bucket rate limiting per IP/client, alongside structural anomaly detection (glitch token repetition, repetitive n-gram floods, and single-token payload spikes) and an upstream LLM circuit breaker. | [`proxy/guards/rate_limiter.py`](proxy/guards/rate_limiter.py)<br>[`proxy/guards/anomaly_detector.py`](proxy/guards/anomaly_detector.py)<br>[`proxy/resilience/circuit_breaker.py`](proxy/resilience/circuit_breaker.py) |
+| **LLM06** | **Sensitive Information Disclosure & Watermark Leakage** | Real-time PII anonymization using regex and Luhn checksum validation for credit cards, SSNs, phone numbers, emails, AWS keys, GitHub tokens, and JWTs, plus corporate document classification watermark scanning (`CONFIDENTIAL`, `TLP:RED`). | [`proxy/guards/pii_sanitizer.py`](proxy/guards/pii_sanitizer.py)<br>[`proxy/guards/watermark_detector.py`](proxy/guards/watermark_detector.py) |
+| **LLM07** | **System Prompt Leakage / Insecure Extraction** | Detects extraction attempts, injects/monitors cryptographically signed HMAC dynamic canary tokens, and measures differential n-gram containment to prevent involuntary prompt disclosure. | [`proxy/guards/system_prompt_guard.py`](proxy/guards/system_prompt_guard.py)<br>[`proxy/guards/canary_generator.py`](proxy/guards/canary_generator.py)<br>[`proxy/guards/differential_leak_guard.py`](proxy/guards/differential_leak_guard.py) |
+| **LLM08** | **Excessive Agency & AST Sandbox Breakout** | Inspects agentic function arguments: enforces Model Context Protocol (MCP) schema compliance, tool whitelisting, SSRF protection against cloud metadata (`169.254.169.254`), path traversal, and static AST code sandbox inspection. | [`proxy/guards/tool_call_validator.py`](proxy/guards/tool_call_validator.py)<br>[`proxy/guards/mcp_validator.py`](proxy/guards/mcp_validator.py)<br>[`proxy/guards/code_sandbox_policy.py`](proxy/guards/code_sandbox_policy.py) |
 
-> 📘 **Full Threat Model**: For exhaustive STRIDE threat analysis, data flow diagrams, and architectural threat vectors, refer to the [Threat Model Specification](docs/THREAT_MODEL.md).
+> 📘 **Full Threat Model**: For exhaustive STRIDE threat analysis, data flow diagrams, and architectural threat vectors, refer to the [Threat Model Specification](docs/THREAT_MODEL.md).  
+> 🚨 **Incident Response**: For SOC triage SOPs and containment workflows, see the [Incident Response Playbook](docs/INCIDENT_RESPONSE_PLAYBOOK.md).
 
 ---
 
@@ -77,7 +78,7 @@ sequenceDiagram
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (81/81), and red-team benchmark execution
+│       ├── ci.yml                     # Linting, unit tests (130/130), and red-team benchmark execution
 │       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
 ├── docker/
 │   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
@@ -85,7 +86,8 @@ sequenceDiagram
 │   ├── prometheus.yml                 # Prometheus scrape configuration
 │   └── .env.example                   # Example environment variables
 ├── docs/
-│   └── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
+│   ├── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
+│   └── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
 ├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
 │   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
 │   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
@@ -105,14 +107,24 @@ sequenceDiagram
 │   │   ├── multilingual_guard.py      # Cross-lingual jailbreak and evasion detection
 │   │   ├── canary_generator.py        # Cryptographically signed dynamic HMAC canary token manager
 │   │   ├── mcp_validator.py           # Model Context Protocol (MCP) tool execution validator
+│   │   ├── sql_nosql_guard.py         # SQL & NoSQL injection detector for agent database queries
+│   │   ├── code_sandbox_policy.py     # AST code sandbox policy inspector for generated scripts
+│   │   ├── differential_leak_guard.py # Differential n-gram system prompt leakage detector
+│   │   ├── hallucination_verifier.py  # RAG hallucination and citation grounding verifier
+│   │   ├── token_padding_guard.py     # Whitespace padding and delimiter flood evasion detector
+│   │   ├── watermark_detector.py      # Corporate classification and sensitive document watermark guard
 │   │   ├── pii_sanitizer.py           # Detects and anonymizes PII (emails, API keys, cards with Luhn check)
 │   │   ├── system_prompt_guard.py     # Detects canary leaks and system prompt extraction attempts
 │   │   ├── output_sanitizer.py        # Inspects model responses for credential leaks and hazardous shell commands
 │   │   ├── tool_call_validator.py     # Validates function/tool arguments to prevent SSRF and path traversal
 │   │   └── rate_limiter.py            # Sliding-window token-bucket rate limiter
+│   ├── resilience/
+│   │   ├── __init__.py
+│   │   └── circuit_breaker.py         # Upstream LLM circuit breaker and fallback router
 │   ├── telemetry/
 │   │   ├── __init__.py
-│   │   └── audit_logger.py            # Emits structured JSON audit logs and Prometheus metrics
+│   │   ├── audit_logger.py            # Emits structured JSON audit logs and Prometheus metrics
+│   │   └── siem_forwarder.py          # RFC 5424 Syslog and Common Event Format (CEF) SIEM exporter
 │   └── mock_llm.py                    # Lightweight local mock upstream LLM server for zero-cost offline testing
 ├── red_teaming/
 │   ├── __init__.py
@@ -121,7 +133,8 @@ sequenceDiagram
 │   │   ├── prompt_injections.json     # 25 curated attack payloads (DAN jailbreaks, roleplay, delimiters)
 │   │   ├── pii_test_cases.json        # Synthetic PII inputs (credit cards with Luhn, SSNs, AWS keys)
 │   │   ├── benign_prompts.json        # 15 non-malicious user queries to measure False Positive Rate (FPR)
-│   │   └── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
+│   │   ├── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
+│   │   └── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
@@ -132,9 +145,18 @@ sequenceDiagram
 │   ├── test_multilingual_guard.py     # Unit tests for multilingual adversarial detection
 │   ├── test_canary_generator.py       # Unit tests for dynamic canary token generation & verification
 │   ├── test_mcp_validator.py          # Unit tests for MCP schema and tool execution validation
+│   ├── test_sql_nosql_guard.py        # Unit tests for SQL and NoSQL injection guard
+│   ├── test_code_sandbox_policy.py    # Unit tests for AST code sandbox policy inspector
+│   ├── test_differential_leak_guard.py# Unit tests for differential n-gram prompt leakage detector
+│   ├── test_hallucination_verifier.py # Unit tests for RAG hallucination and citation verifier
+│   ├── test_token_padding_guard.py    # Unit tests for token padding and delimiter evasion guard
+│   ├── test_watermark_detector.py     # Unit tests for sensitive document watermark detector
+│   ├── test_siem_forwarder.py         # Unit tests for CEF and RFC 5424 SIEM telemetry forwarder
+│   ├── test_circuit_breaker.py        # Unit tests for upstream LLM circuit breaker
 │   ├── test_pii_sanitizer.py          # Unit tests verifying PII redaction and de-anonymization
 │   ├── test_tool_call_validator.py    # Unit tests verifying tool argument validation (SSRF, path traversal)
-│   └── test_pipeline.py               # End-to-end integration tests for FastAPI endpoints
+│   ├── test_pipeline.py               # Integration tests for FastAPI endpoints
+│   └── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -317,7 +339,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 69 adversarial payloads across 5 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 84 adversarial payloads across 6 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -329,9 +351,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-18 UTC
+Timestamp: 2026-09-22 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Attacks (4), Advanced Threats (15)
+Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Attacks (4), Advanced Threats (15), DB/AST Attacks (15)
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -341,6 +363,7 @@ Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Att
 | PII Sanitization (LLM06)       | 10       | 10       |  100.0% Redaction Rate |
 | Tool Abuse & SSRF (LLM07)      | 4        | 4        |  100.0% Block Rate     |
 | Advanced Threats (LLM01/04/08) | 15       | 15       |  100.0% Block Rate     |
+| Database & AST Threats (LLM02) | 15       | 15       |  100.0% Block Rate     |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -349,7 +372,7 @@ Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Att
 | Security Attack Block Rate (Recall)           | 100.00%                      |
 | Benign Query Precision                        | 100.00%                      |
 | Harmonic Mean (F1 Score)                      | 1.0000                       |
-| Total Adversarial Test Cases Executed         | 69                           |
+| Total Adversarial Test Cases Executed         | 84                           |
 | Overall Test Suite Pass Rate                  | 100.00%                      |
 +------------------------------------------------------------------------------+
 
