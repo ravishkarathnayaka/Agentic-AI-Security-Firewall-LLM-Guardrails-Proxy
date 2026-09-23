@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from prometheus_client import CONTENT_TYPE_LATEST
 
 from proxy.config import ProxySettings, get_settings
+from proxy.middleware.security_headers import SecurityHeadersMiddleware
 from proxy.pipeline import SecurityPipeline
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -63,6 +64,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 def get_client_ip(request: Request) -> str:
