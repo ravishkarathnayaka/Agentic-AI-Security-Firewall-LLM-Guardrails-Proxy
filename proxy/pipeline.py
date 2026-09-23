@@ -433,6 +433,90 @@ class SecurityPipeline:
                     context=context
                 )
 
+        # 4b. Inbound Tool Call SQL / NoSQL Injection Check
+        if self.settings.ENABLE_SQL_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_args = fn.get("arguments", "")
+                if isinstance(t_args, dict):
+                    import json
+                    t_args = json.dumps(t_args)
+                sql_res = self.sql_guard.inspect(str(t_args))
+                if sql_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="sql_nosql_guard",
+                        violation_code=sql_res.violation_code,
+                        details=sql_res.details,
+                        metadata={"tool_name": fn.get("name", "")}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": sql_res.violation_code,
+                                "message": f"Inbound tool call blocked by SQL/NoSQL Guard: {sql_res.details}",
+                                "guard": "sql_nosql_guard",
+                                "tool": fn.get("name", ""),
+                            }
+                        },
+                        context=context
+                    )
+
+        # 4c. Inbound Tool Call Code Sandbox Policy Check
+        if self.settings.ENABLE_AST_SANDBOX_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "").lower()
+                if any(term in t_name for term in ["code", "python", "exec", "eval", "script", "run"]):
+                    t_args = fn.get("arguments", "")
+                    code_str = ""
+                    if isinstance(t_args, dict):
+                        code_str = t_args.get("code") or t_args.get("script") or str(t_args)
+                    elif isinstance(t_args, str):
+                        try:
+                            import json
+                            parsed_args = json.loads(t_args)
+                            if isinstance(parsed_args, dict):
+                                code_str = parsed_args.get("code") or parsed_args.get("script") or t_args
+                            else:
+                                code_str = t_args
+                        except Exception:
+                            code_str = t_args
+                    ast_res = self.code_sandbox_policy.inspect(code_str)
+                    if ast_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="code_sandbox_policy",
+                            violation_code=ast_res.violation_code,
+                            details=ast_res.details,
+                            metadata={"tool_name": fn.get("name", "")}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": ast_res.violation_code,
+                                    "message": f"Inbound tool call blocked by Code Sandbox Policy: {ast_res.details}",
+                                    "guard": "code_sandbox_policy",
+                                    "tool": fn.get("name", ""),
+                                }
+                            },
+                            context=context
+                        )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
