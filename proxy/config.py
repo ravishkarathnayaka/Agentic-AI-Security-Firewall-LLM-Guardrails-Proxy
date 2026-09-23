@@ -103,6 +103,26 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable sensitive document watermark and classification detector"
     )
+    ENABLE_NETWORK_PERIMETER_GUARD: bool = Field(
+        default=True,
+        description="Enable CIDR subnet blocklist and network perimeter guard"
+    )
+    ENABLE_NESTED_UNPACK_GUARD: bool = Field(
+        default=True,
+        description="Enable recursive multi-tier decoding and unpack guard"
+    )
+    ENABLE_STRUCTURED_OUTPUT_ENFORCER: bool = Field(
+        default=True,
+        description="Enable structured output and outbound JSON schema enforcer"
+    )
+    ENABLE_GOAL_DRIFT_DETECTOR: bool = Field(
+        default=True,
+        description="Enable agent goal drift and roleplay hijacking detector"
+    )
+    ENABLE_SYNTHETIC_PII: bool = Field(
+        default=False,
+        description="Enable synthetic format-preserving PII replacement engine"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"

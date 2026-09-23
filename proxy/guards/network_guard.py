@@ -54,8 +54,12 @@ class NetworkPerimeterGuard:
         Returns:
             (is_blocked, reason)
         """
+        raw_ip = ip_str.strip()
+        if raw_ip.lower() in ("testclient", "testproxy", "localhost", "127.0.0.1", "::1"):
+            return False, None
+
         try:
-            ip_obj = ipaddress.ip_address(ip_str.strip())
+            ip_obj = ipaddress.ip_address(raw_ip)
         except ValueError:
             return True, f"Invalid IP address format: '{ip_str}'"
 

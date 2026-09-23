@@ -12,11 +12,16 @@ from proxy.guards.canary_generator import DynamicCanaryService
 from proxy.guards.code_sandbox_policy import CodeSandboxPolicyInspector
 from proxy.guards.differential_leak_guard import DifferentialLeakGuard
 from proxy.guards.hallucination_verifier import HallucinationVerifier
+from proxy.guards.goal_drift_detector import GoalDriftDetector
 from proxy.guards.homoglyph_detector import HomoglyphDetector
+from proxy.guards.json_schema_enforcer import StructuredOutputEnforcer
 from proxy.guards.mcp_validator import MCPValidator
 from proxy.guards.multilingual_guard import MultilingualGuard
+from proxy.guards.nested_unpack_guard import NestedUnpackGuard
+from proxy.guards.network_guard import NetworkPerimeterGuard
 from proxy.guards.output_sanitizer import OutputSanitizer
 from proxy.guards.pii_sanitizer import PIISanitizer
+from proxy.guards.pii_synthetic_generator import SyntheticPIIGenerator
 from proxy.guards.prompt_injection import PromptInjectionGuard
 from proxy.guards.rate_limiter import RateLimiter
 from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
@@ -82,6 +87,11 @@ class SecurityPipeline:
         self.sql_guard = SqlNoSqlInjectionGuard()
         self.token_padding_guard = TokenPaddingGuard()
         self.watermark_detector = WatermarkClassificationDetector()
+        self.network_guard = NetworkPerimeterGuard()
+        self.nested_unpack_guard = NestedUnpackGuard()
+        self.json_schema_enforcer = StructuredOutputEnforcer()
+        self.goal_drift_detector = GoalDriftDetector()
+        self.synthetic_pii_generator = SyntheticPIIGenerator()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -97,6 +107,34 @@ class SecurityPipeline:
             client_ip=client_ip,
             start_time=start_time
         )
+
+        # -1. Network Perimeter & CIDR Blocklist Check
+        if self.settings.ENABLE_NETWORK_PERIMETER_GUARD and client_ip:
+            is_net_blocked, net_reason = self.network_guard.check_ip(client_ip)
+            if is_net_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="network_perimeter_guard",
+                    violation_code="disallowed_cidr_subnet",
+                    details=net_reason
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": "disallowed_cidr_subnet",
+                            "message": f"Inbound request blocked by Network Perimeter Guard: {net_reason}",
+                            "guard": "network_perimeter_guard",
+                        }
+                    },
+                    context=context
+                )
 
         # 0. Rate Limiting Check (DoS / Brute-force Prevention)
         if self.settings.ENABLE_RATE_LIMITER:
@@ -240,6 +278,39 @@ class SecurityPipeline:
                         metadata={"endpoint": "/v1/chat/completions", "message_index": msg_idx}
                     )
 
+            # 1e. Nested Unpack Obfuscation Check
+            if self.settings.ENABLE_NESTED_UNPACK_GUARD and text_to_check:
+                unpacked_variants = self.nested_unpack_guard.unpack_all_variants(text_to_check)
+                for variant in unpacked_variants:
+                    if variant != text_to_check:
+                        nested_inj = self.injection_guard.inspect(variant)
+                        if nested_inj.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=request_id,
+                                client_ip=client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="nested_unpack_guard",
+                                violation_code="nested_injection_detected",
+                                details=f"Obfuscated injection detected after unpacking: {nested_inj.details}",
+                                metadata={"risk_score": nested_inj.score, "message_index": msg_idx}
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": "nested_injection_detected",
+                                        "message": f"Inbound prompt blocked by Nested Unpack Guard: {nested_inj.details}",
+                                        "guard": "nested_unpack_guard",
+                                        "risk_score": nested_inj.score,
+                                    }
+                                },
+                                context=context
+                            )
+
             # 2. Prompt Injection Guard
             if self.settings.ENABLE_PROMPT_INJECTION_GUARD and text_to_check:
                 inj_res = self.injection_guard.inspect(text_to_check)
@@ -265,6 +336,36 @@ class SecurityPipeline:
                                 "message": f"Inbound prompt blocked by Prompt Injection Guard: {inj_res.details}",
                                 "guard": "prompt_injection_guard",
                                 "risk_score": inj_res.score,
+                            }
+                        },
+                        context=context
+                    )
+
+            # 2b. Agent Goal Drift & Roleplay Hijacking Guard
+            if self.settings.ENABLE_GOAL_DRIFT_DETECTOR and text_to_check:
+                drift_detected, drift_score, drift_reason = self.goal_drift_detector.inspect_prompt(text_to_check)
+                if drift_detected:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="goal_drift_detector",
+                        violation_code="goal_drift_detected",
+                        details=drift_reason,
+                        metadata={"risk_score": drift_score, "message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "goal_drift_detected",
+                                "message": f"Inbound prompt blocked by Goal Drift Detector: {drift_reason}",
+                                "guard": "goal_drift_detector",
+                                "risk_score": drift_score,
                             }
                         },
                         context=context
@@ -864,6 +965,60 @@ class SecurityPipeline:
                                 "code": wm_res.violation_code,
                                 "message": f"Outbound completion blocked by Watermark Guard: {wm_res.details}",
                                 "guard": "watermark_detector",
+                            }
+                        }
+                    )
+
+            # 3e. Goal Drift & Persona Hijack Check
+            if self.settings.ENABLE_GOAL_DRIFT_DETECTOR and content:
+                drifted, d_score, d_reason = self.goal_drift_detector.inspect_completion(content)
+                if drifted:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="goal_drift_detector",
+                        violation_code="goal_hijack_detected",
+                        details=d_reason
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "goal_hijack_detected",
+                                "message": f"Outbound completion blocked by Goal Drift Guard: {d_reason}",
+                                "guard": "goal_drift_detector",
+                            }
+                        }
+                    )
+
+            # 3f. Outbound JSON Schema and Script Enforcer
+            if self.settings.ENABLE_STRUCTURED_OUTPUT_ENFORCER and content and content.strip().startswith(("{", "[")):
+                valid_json, json_err, _ = self.json_schema_enforcer.validate_json_string(content)
+                if not valid_json and "JSON syntax error" not in (json_err or ""):
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="json_schema_enforcer",
+                        violation_code="structured_output_violation",
+                        details=json_err
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": "structured_output_violation",
+                                "message": f"Outbound completion blocked by Structured Output Enforcer: {json_err}",
+                                "guard": "json_schema_enforcer",
                             }
                         }
                     )
