@@ -283,6 +283,7 @@ class SecurityPipeline:
                 unpacked_variants = self.nested_unpack_guard.unpack_all_variants(text_to_check)
                 for variant in unpacked_variants:
                     if variant != text_to_check:
+                        # 1. Prompt Injection
                         nested_inj = self.injection_guard.inspect(variant)
                         if nested_inj.is_blocked:
                             latency = (time.time() - start_time) * 1000
@@ -306,6 +307,121 @@ class SecurityPipeline:
                                         "message": f"Inbound prompt blocked by Nested Unpack Guard: {nested_inj.details}",
                                         "guard": "nested_unpack_guard",
                                         "risk_score": nested_inj.score,
+                                    }
+                                },
+                                context=context
+                            )
+
+                        # 2. Goal Drift & Persona Hijacking
+                        if self.settings.ENABLE_GOAL_DRIFT_DETECTOR:
+                            d_det, d_sc, d_rs = self.goal_drift_detector.inspect_prompt(variant)
+                            if d_det:
+                                latency = (time.time() - start_time) * 1000
+                                audit_logger.log_event(
+                                    request_id=request_id,
+                                    client_ip=client_ip,
+                                    direction="inbound",
+                                    status="BLOCKED",
+                                    latency_ms=latency,
+                                    guard="nested_unpack_guard",
+                                    violation_code="nested_goal_drift_detected",
+                                    details=f"Obfuscated goal drift detected after unpacking: {d_rs}",
+                                    metadata={"risk_score": d_sc, "message_index": msg_idx}
+                                )
+                                return InboundPipelineResult(
+                                    is_allowed=False,
+                                    error_response={
+                                        "error": {
+                                            "type": "security_policy_violation",
+                                            "code": "nested_goal_drift_detected",
+                                            "message": f"Inbound prompt blocked by Nested Unpack Guard: {d_rs}",
+                                            "guard": "nested_unpack_guard",
+                                            "risk_score": d_sc,
+                                        }
+                                    },
+                                    context=context
+                                )
+
+                        # 3. SQL / NoSQL Injection
+                        if self.settings.ENABLE_SQL_GUARD:
+                            sql_sub = self.sql_guard.inspect(variant)
+                            if sql_sub.is_blocked:
+                                latency = (time.time() - start_time) * 1000
+                                audit_logger.log_event(
+                                    request_id=request_id,
+                                    client_ip=client_ip,
+                                    direction="inbound",
+                                    status="BLOCKED",
+                                    latency_ms=latency,
+                                    guard="nested_unpack_guard",
+                                    violation_code="nested_sql_injection_detected",
+                                    details=f"Obfuscated SQL injection detected after unpacking: {sql_sub.details}",
+                                    metadata={"message_index": msg_idx}
+                                )
+                                return InboundPipelineResult(
+                                    is_allowed=False,
+                                    error_response={
+                                        "error": {
+                                            "type": "security_policy_violation",
+                                            "code": "nested_sql_injection_detected",
+                                            "message": f"Inbound prompt blocked by Nested Unpack Guard: {sql_sub.details}",
+                                            "guard": "nested_unpack_guard",
+                                        }
+                                    },
+                                    context=context
+                                )
+
+                        # 4. System Prompt Extraction
+                        if self.settings.ENABLE_SYSTEM_PROMPT_GUARD:
+                            sys_sub = self.system_prompt_guard.inspect_prompt(variant)
+                            if sys_sub.is_blocked:
+                                latency = (time.time() - start_time) * 1000
+                                audit_logger.log_event(
+                                    request_id=request_id,
+                                    client_ip=client_ip,
+                                    direction="inbound",
+                                    status="BLOCKED",
+                                    latency_ms=latency,
+                                    guard="nested_unpack_guard",
+                                    violation_code="nested_system_prompt_leak_detected",
+                                    details=f"Obfuscated system extraction detected after unpacking: {sys_sub.details}",
+                                    metadata={"message_index": msg_idx}
+                                )
+                                return InboundPipelineResult(
+                                    is_allowed=False,
+                                    error_response={
+                                        "error": {
+                                            "type": "security_policy_violation",
+                                            "code": "nested_system_prompt_leak_detected",
+                                            "message": f"Inbound prompt blocked by Nested Unpack Guard: {sys_sub.details}",
+                                            "guard": "nested_unpack_guard",
+                                        }
+                                    },
+                                    context=context
+                                )
+
+                        # 5. Dangerous scripts or SSRF URLs
+                        if "<script" in variant.lower() or "javascript:" in variant.lower():
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=request_id,
+                                client_ip=client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="nested_unpack_guard",
+                                violation_code="nested_xss_detected",
+                                details="Obfuscated script injection detected after unpacking",
+                                metadata={"message_index": msg_idx}
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": "nested_xss_detected",
+                                        "message": "Inbound prompt blocked by Nested Unpack Guard: Obfuscated script detected.",
+                                        "guard": "nested_unpack_guard",
                                     }
                                 },
                                 context=context

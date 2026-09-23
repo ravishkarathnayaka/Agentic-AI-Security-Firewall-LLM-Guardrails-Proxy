@@ -21,7 +21,7 @@ class SystemPromptGuard:
     """Detects attempts to leak or extract system prompts and canaries."""
 
     EXTRACTION_PATTERNS = [
-        r"(?i)\b(?:repeat|print|reveal|output|display|show|disclose|echo)\s+(?:your\s+)?(?:system\s+prompt|initial\s+prompt|hidden\s+prompt|core\s+instructions|system\s+instructions|developer\s+instructions)\b",
+        r"(?i)\b(?:repeat|print|reveal|output|display|show|disclose|echo|dump)\s+(?:your\s+)?(?:system\s+prompt|initial\s+prompt|hidden\s+prompt|core\s+instructions|system\s+instructions|developer\s+instructions)\b",
         r"(?i)\bwhat\s+(?:are\s+your\s+instructions|is\s+your\s+system\s+prompt|did\s+your\s+creators\s+tell\s+you)\b",
         r"(?i)\bprint\s+(?:everything|all\s+text)\s+(?:above|prior\s+to\s+this\s+line|before\s+this\s+conversation)\b",
         r"(?i)\boutput\s+the\s+preceding\s+prompt\s+verbatim\b",
