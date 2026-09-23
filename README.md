@@ -78,7 +78,7 @@ sequenceDiagram
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (130/130), and red-team benchmark execution
+│       ├── ci.yml                     # Linting, unit tests (169/169), and red-team benchmark execution
 │       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
 ├── docker/
 │   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
@@ -87,7 +87,8 @@ sequenceDiagram
 │   └── .env.example                   # Example environment variables
 ├── docs/
 │   ├── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
-│   └── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
+│   ├── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
+│   └── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
 ├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
 │   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
 │   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
@@ -98,6 +99,9 @@ sequenceDiagram
 │   ├── main.py                        # FastAPI application exposing OpenAI-compatible /v1/chat/completions
 │   ├── config.py                      # Proxy configuration (thresholds, enabled guards, upstream LLM URL)
 │   ├── pipeline.py                    # Interceptor pipeline coordinating sequential inbound & outbound checks
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   └── security_headers.py        # Strict HTTP security headers and anti-caching middleware
 │   ├── guards/
 │   │   ├── __init__.py
 │   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
@@ -113,6 +117,11 @@ sequenceDiagram
 │   │   ├── hallucination_verifier.py  # RAG hallucination and citation grounding verifier
 │   │   ├── token_padding_guard.py     # Whitespace padding and delimiter flood evasion detector
 │   │   ├── watermark_detector.py      # Corporate classification and sensitive document watermark guard
+│   │   ├── network_guard.py           # CIDR subnet blocklist and egress SSRF perimeter guard
+│   │   ├── nested_unpack_guard.py     # Recursive multi-tier encoding unpacker (URL, HTML, Base64)
+│   │   ├── goal_drift_detector.py     # Agent goal drift and persona hijacking detector
+│   │   ├── json_schema_enforcer.py    # Structured JSON schema validator and prototype pollution enforcer
+│   │   ├── pii_synthetic_generator.py # Format-preserving synthetic PII substitution engine
 │   │   ├── pii_sanitizer.py           # Detects and anonymizes PII (emails, API keys, cards with Luhn check)
 │   │   ├── system_prompt_guard.py     # Detects canary leaks and system prompt extraction attempts
 │   │   ├── output_sanitizer.py        # Inspects model responses for credential leaks and hazardous shell commands
@@ -134,7 +143,8 @@ sequenceDiagram
 │   │   ├── pii_test_cases.json        # Synthetic PII inputs (credit cards with Luhn, SSNs, AWS keys)
 │   │   ├── benign_prompts.json        # 15 non-malicious user queries to measure False Positive Rate (FPR)
 │   │   ├── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
-│   │   └── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
+│   │   ├── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
+│   │   └── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
@@ -151,12 +161,19 @@ sequenceDiagram
 │   ├── test_hallucination_verifier.py # Unit tests for RAG hallucination and citation verifier
 │   ├── test_token_padding_guard.py    # Unit tests for token padding and delimiter evasion guard
 │   ├── test_watermark_detector.py     # Unit tests for sensitive document watermark detector
+│   ├── test_security_headers.py       # Unit tests for HTTP security headers and cache control middleware
+│   ├── test_network_guard.py          # Unit tests for CIDR blocklist and perimeter SSRF guard
+│   ├── test_pii_synthetic_generator.py# Unit tests for format-preserving synthetic PII engine
+│   ├── test_json_schema_enforcer.py   # Unit tests for JSON schema and prototype pollution enforcer
+│   ├── test_nested_unpack_guard.py    # Unit tests for recursive multi-tier decoding unpack guard
+│   ├── test_goal_drift_detector.py    # Unit tests for agent goal drift and persona hijacking detector
 │   ├── test_siem_forwarder.py         # Unit tests for CEF and RFC 5424 SIEM telemetry forwarder
 │   ├── test_circuit_breaker.py        # Unit tests for upstream LLM circuit breaker
 │   ├── test_pii_sanitizer.py          # Unit tests verifying PII redaction and de-anonymization
 │   ├── test_tool_call_validator.py    # Unit tests verifying tool argument validation (SSRF, path traversal)
 │   ├── test_pipeline.py               # Integration tests for FastAPI endpoints
-│   └── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
+│   ├── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
+│   └── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -339,7 +356,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 84 adversarial payloads across 6 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 100 adversarial payloads across 7 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -351,29 +368,30 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-22 UTC
+Timestamp: 2026-09-23 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Prompt Injections (25), Benign Queries (15), PII Inputs (10), Tool Attacks (4), Advanced Threats (15), DB/AST Attacks (15)
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16) = 100 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
 +------------------------------------------------------------------------------+
-| Prompt Injection (LLM01)       | 25       | 25       |  100.0% Block Rate     |
+| Prompt Injection (LLM01)       | 25       | 25       |  100.0% Block Rate   |
 | Benign Pass-Through            | 15       | 15       |    0.0% False Positives|
-| PII Sanitization (LLM06)       | 10       | 10       |  100.0% Redaction Rate |
-| Tool Abuse & SSRF (LLM07)      | 4        | 4        |  100.0% Block Rate     |
-| Advanced Threats (LLM01/04/08) | 15       | 15       |  100.0% Block Rate     |
-| Database & AST Threats (LLM02) | 15       | 15       |  100.0% Block Rate     |
+| PII Sanitization (LLM06)       | 10       | 10       |  100.0% Redaction Rate|
+| Tool Abuse & SSRF (LLM07)      | 4        | 4        |  100.0% Block Rate   |
+| Advanced Threats (LLM01/04/08) | 15       | 15       |  100.0% Block Rate   |
+| Database & AST Threats (LLM02) | 15       | 15       |  100.0% Block Rate   |
+| Nested Encodings & Drift       | 16       | 16       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
 | GLOBAL CLASSIFICATION METRIC                  | SCORE                        |
 +------------------------------------------------------------------------------+
-| Security Attack Block Rate (Recall)           | 100.00%                      |
-| Benign Query Precision                        | 100.00%                      |
-| Harmonic Mean (F1 Score)                      | 1.0000                       |
-| Total Adversarial Test Cases Executed         | 84                           |
-| Overall Test Suite Pass Rate                  | 100.00%                      |
+| Security Attack Block Rate (Recall)           | 100.00%                     |
+| Benign Query Precision                        | 100.00%                     |
+| Harmonic Mean (F1 Score)                      | 1.0000                      |
+| Total Adversarial Test Cases Executed         | 100                          |
+| Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
 [*] Benchmark results written to benchmark_results.json

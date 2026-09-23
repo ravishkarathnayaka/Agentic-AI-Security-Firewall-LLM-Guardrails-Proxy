@@ -5,6 +5,22 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-23
+
+### Added
+- **Network Perimeter & CIDR Blocklist Guard (`network_guard.py`)**: Zero-trust client IP inspection blocking bogons, testnets, and cloud metadata services (`169.254.169.254/32`, `metadata.google.internal`), with egress URL SSRF detection across hex, octal, and dword encodings.
+- **Strict Security Headers & Anti-Caching Middleware (`security_headers.py`)**: ASGI middleware enforcing `no-store, no-cache, must-revalidate` cache controls, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy`, and stripping server disclosure headers.
+- **Recursive Multi-Tier Unpacking & Normalization Guard (`nested_unpack_guard.py`)**: Recursively decodes nested URL percent-encoding, double URL encoding, HTML character entities, hex/unicode escape sequences (`\x27`, `\u0027`), and embedded Base64 payload wrappers.
+- **Agent Goal Drift & Roleplay Hijacking Detector (`goal_drift_detector.py`)**: Detects autonomous agent persona subversion, developer mode circumventions, and rule abandonment in both inbound prompts and outbound completions.
+- **Structured Output & Outbound JSON Schema Enforcer (`json_schema_enforcer.py`)**: Validates agent structured outputs against strict schemas, neutralizes recursive JSON bomb DoS attacks, and prevents prototype pollution (`__proto__`, `constructor`).
+- **Format-Preserving Synthetic PII Replacement Engine (`pii_synthetic_generator.py`)**: Replaces sensitive data with deterministic, format-preserving synthetic proxies preserving grammar and few-shot prompt syntax.
+- **Adversarial Benchmark Expansion to 100 Test Cases**: Added `nested_and_drift_attacks.json` (16 enterprise adversarial vectors), achieving a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 100 test cases.
+- **Enterprise Production Hardening & Deployment Guide (`docs/PRODUCTION_HARDENING_GUIDE.md`)**: Comprehensive production deployment architecture, Kubernetes isolation, and zero-trust container configuration guide.
+
+### Changed
+- Integrated network perimeter, nested unpacking, and goal drift detectors into `SecurityPipeline` inbound and outbound stages.
+- Expanded automated unit and integration test suite to **169 passing tests**.
+
 ## [2.2.0] - 2026-09-22
 
 ### Added
