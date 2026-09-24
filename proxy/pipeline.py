@@ -12,6 +12,8 @@ from proxy.guards.canary_generator import DynamicCanaryService
 from proxy.guards.code_sandbox_policy import CodeSandboxPolicyInspector
 from proxy.guards.differential_leak_guard import DifferentialLeakGuard
 from proxy.guards.hallucination_verifier import HallucinationVerifier
+from proxy.guards.canary_redactor import CanaryLeakScrubber
+from proxy.guards.command_injection_guard import CommandInjectionGuard
 from proxy.guards.goal_drift_detector import GoalDriftDetector
 from proxy.guards.homoglyph_detector import HomoglyphDetector
 from proxy.guards.json_schema_enforcer import StructuredOutputEnforcer
@@ -20,14 +22,17 @@ from proxy.guards.multilingual_guard import MultilingualGuard
 from proxy.guards.nested_unpack_guard import NestedUnpackGuard
 from proxy.guards.network_guard import NetworkPerimeterGuard
 from proxy.guards.output_sanitizer import OutputSanitizer
+from proxy.guards.phonetic_leetspeak_guard import PhoneticLeetspeakGuard
 from proxy.guards.pii_sanitizer import PIISanitizer
 from proxy.guards.pii_synthetic_generator import SyntheticPIIGenerator
 from proxy.guards.prompt_injection import PromptInjectionGuard
 from proxy.guards.rate_limiter import RateLimiter
+from proxy.guards.recursion_budget_guard import RecursionBudgetGuard
 from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
 from proxy.guards.sql_nosql_guard import SqlNoSqlInjectionGuard
 from proxy.guards.system_prompt_guard import SystemPromptGuard
 from proxy.guards.token_padding_guard import TokenPaddingGuard
+from proxy.guards.token_smuggling_guard import TokenSmugglingGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
 from proxy.guards.watermark_detector import WatermarkClassificationDetector
 from proxy.resilience.circuit_breaker import CircuitBreaker
@@ -92,6 +97,11 @@ class SecurityPipeline:
         self.json_schema_enforcer = StructuredOutputEnforcer()
         self.goal_drift_detector = GoalDriftDetector()
         self.synthetic_pii_generator = SyntheticPIIGenerator()
+        self.phonetic_leet_guard = PhoneticLeetspeakGuard()
+        self.command_injection_guard = CommandInjectionGuard()
+        self.token_smuggling_guard = TokenSmugglingGuard()
+        self.recursion_budget_guard = RecursionBudgetGuard()
+        self.canary_scrubber = CanaryLeakScrubber(static_tokens=[self.settings.CANARY_TOKEN])
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -197,6 +207,36 @@ class SecurityPipeline:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
+
+            # 0a. Token Smuggling and Zero-Width Steganography Check
+            if self.settings.ENABLE_TOKEN_SMUGGLING_GUARD and text_to_check:
+                smug_res = self.token_smuggling_guard.inspect(text_to_check)
+                if smug_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="token_smuggling_guard",
+                        violation_code=smug_res.violation_code,
+                        details=smug_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": smug_res.violation_code or "zero_width_smuggling_detected",
+                                "message": f"Inbound prompt blocked by Token Smuggling Guard: {smug_res.details}",
+                                "guard": "token_smuggling_guard",
+                            }
+                        },
+                        context=context
+                    )
+                text_to_check = smug_res.sanitized_text
 
             # 0b. Token Padding and Delimiter Evasion Guard
             if self.settings.ENABLE_TOKEN_PADDING_GUARD and text_to_check:
@@ -426,6 +466,64 @@ class SecurityPipeline:
                                 },
                                 context=context
                             )
+
+            # 1f. Phonetic & Leetspeak Deobfuscation Check
+            if self.settings.ENABLE_PHONETIC_LEET_GUARD and text_to_check:
+                norm_leet, n_leet = self.phonetic_leet_guard.normalize(text_to_check)
+                if n_leet > 0 and norm_leet != text_to_check:
+                    leet_inj = self.injection_guard.inspect(norm_leet)
+                    if leet_inj.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="phonetic_leetspeak_guard",
+                            violation_code="phonetic_leetspeak_injection",
+                            details=f"Phonetic leetspeak evasion detected: {leet_inj.details}",
+                            metadata={"risk_score": leet_inj.score, "message_index": msg_idx}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": "phonetic_leetspeak_injection",
+                                    "message": f"Inbound prompt blocked by Phonetic Leet Guard: {leet_inj.details}",
+                                    "guard": "phonetic_leetspeak_guard",
+                                    "risk_score": leet_inj.score,
+                                }
+                            },
+                            context=context
+                        )
+                    d_leet, _, d_r_leet = self.goal_drift_detector.inspect_prompt(norm_leet)
+                    if d_leet:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="phonetic_leetspeak_guard",
+                            violation_code="phonetic_goal_drift_detected",
+                            details=f"Phonetic goal drift detected: {d_r_leet}",
+                            metadata={"message_index": msg_idx}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": "phonetic_goal_drift_detected",
+                                    "message": f"Inbound prompt blocked by Phonetic Leet Guard: {d_r_leet}",
+                                    "guard": "phonetic_leetspeak_guard",
+                                }
+                            },
+                            context=context
+                        )
 
             # 2. Prompt Injection Guard
             if self.settings.ENABLE_PROMPT_INJECTION_GUARD and text_to_check:
@@ -772,6 +870,33 @@ class SecurityPipeline:
             content = msg.get("content", "") or ""
             tool_calls = msg.get("tool_calls", [])
 
+            # 0. Agent Tool Recursion Depth & Budget Quota Check
+            if self.settings.ENABLE_RECURSION_BUDGET_GUARD and tool_calls:
+                budget_res = self.recursion_budget_guard.check_tool_calls(context.request_id, tool_calls)
+                if budget_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="recursion_budget_guard",
+                        violation_code=budget_res.violation_code,
+                        details=budget_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": budget_res.violation_code or "recursion_limit_exceeded",
+                                "message": f"Agentic tool call blocked by Recursion Budget Guard: {budget_res.details}",
+                                "guard": "recursion_budget_guard",
+                            }
+                        }
+                    )
+
             # 1. Tool Call Validation for Agentic Output (SSRF / Traversal)
             if self.settings.ENABLE_TOOL_CALL_VALIDATOR and tool_calls:
                 tool_res = self.tool_call_validator.validate_tool_calls(tool_calls)
@@ -922,6 +1047,39 @@ class SecurityPipeline:
                                     }
                                 }
                             )
+
+            # 1e. Command Injection & Parameter Chaining Check
+            if self.settings.ENABLE_COMMAND_INJECTION_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", "")
+                    cmd_res = self.command_injection_guard.inspect_arguments(t_args)
+                    if cmd_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="command_injection_guard",
+                            violation_code=cmd_res.violation_code,
+                            details=cmd_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": cmd_res.violation_code or "command_injection_detected",
+                                    "message": f"Agentic tool call blocked by Command Injection Guard: {cmd_res.details}",
+                                    "guard": "command_injection_guard",
+                                    "tool": t_name,
+                                }
+                            }
+                        )
 
             # 2. Canary Leak Check
             if self.settings.ENABLE_SYSTEM_PROMPT_GUARD and content:
@@ -1138,6 +1296,10 @@ class SecurityPipeline:
                             }
                         }
                     )
+
+            # 3g. Active Canary Redaction & System Leak Scrubber
+            if self.settings.ENABLE_CANARY_SCRUBBER and content:
+                content, _, _ = self.canary_scrubber.scrub(content)
 
             # 4. Optional De-Anonymization (restore PII tokens in response if configured)
             if self.settings.DE_ANONYMIZE_OUTPUT and context.reversal_map and content:

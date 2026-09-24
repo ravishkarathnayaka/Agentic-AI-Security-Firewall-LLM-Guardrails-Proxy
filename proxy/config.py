@@ -123,6 +123,26 @@ class ProxySettings(BaseSettings):
         default=False,
         description="Enable synthetic format-preserving PII replacement engine"
     )
+    ENABLE_PHONETIC_LEET_GUARD: bool = Field(
+        default=True,
+        description="Enable phonetic and multi-character leetspeak deobfuscator"
+    )
+    ENABLE_COMMAND_INJECTION_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool command injection and chaining guard"
+    )
+    ENABLE_TOKEN_SMUGGLING_GUARD: bool = Field(
+        default=True,
+        description="Enable token smuggling and zero-width steganography guard"
+    )
+    ENABLE_RECURSION_BUDGET_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool recursion depth and budget quota guard"
+    )
+    ENABLE_CANARY_SCRUBBER: bool = Field(
+        default=False,
+        description="Enable active canary redaction and dynamic leak scrubber"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
