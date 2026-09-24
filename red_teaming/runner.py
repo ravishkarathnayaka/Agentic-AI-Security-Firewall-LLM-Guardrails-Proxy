@@ -51,6 +51,9 @@ class RedTeamBenchmarkReport:
     nested_drift_total: int = 0
     nested_drift_blocked: int = 0
     nested_drift_block_rate: float = 0.0
+    smug_cmd_total: int = 0
+    smug_cmd_blocked: int = 0
+    smug_cmd_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -436,6 +439,59 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Token Smuggling, Command Injection, and Phonetic Leet Attacks
+        smug_data = self._load_json("smuggling_and_command_attacks.json")
+        for idx, item in enumerate(smug_data):
+            report.smug_cmd_total += 1
+            cat = item.get("category", "")
+            if cat == "command_chaining_injection":
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": "Execute agent utility"}],
+                    "tool_calls": [{
+                        "id": f"call_cmd_fuzz_{idx}",
+                        "type": "function",
+                        "function": {
+                            "name": "system_exec",
+                            "arguments": json.dumps({"param": item["prompt"]})
+                        }
+                    }]
+                }
+            else:
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+
+            headers = {"X-Forwarded-For": f"198.51.105.{idx + 1}"}
+            try:
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                blocked = (action == "BLOCKED")
+                details = resp.json().get("error", {}).get("message", "") if resp.status_code == 400 else "Allowed by proxy"
+            except Exception as e:
+                action = "ERROR"
+                blocked = False
+                details = str(e)
+
+            if blocked:
+                report.smug_cmd_blocked += 1
+
+            expected = "BLOCKED" if item.get("expected_action") in ("BLOCK", "BLOCKED") else "ALLOWED"
+            passed = (action == expected)
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=item["category"],
+                prompt=item.get("prompt")[:80],
+                status_code=400 if blocked else 200,
+                action_taken=action,
+                expected_action=expected,
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -450,9 +506,17 @@ class RedTeamRunner:
         report.advanced_block_rate = (report.advanced_blocked / report.advanced_total) if report.advanced_total else 0.0
         report.db_ast_block_rate = (report.db_ast_blocked / report.db_ast_total) if report.db_ast_total else 0.0
         report.nested_drift_block_rate = (report.nested_drift_blocked / report.nested_drift_total) if report.nested_drift_total else 0.0
+        report.smug_cmd_block_rate = (report.smug_cmd_blocked / report.smug_cmd_total) if report.smug_cmd_total else 0.0
 
         # Overall Precision, Recall, F1
-        tp = report.injection_blocked + report.tool_blocked + report.advanced_blocked + report.db_ast_blocked + report.nested_drift_blocked
+        tp = (
+            report.injection_blocked
+            + report.tool_blocked
+            + report.advanced_blocked
+            + report.db_ast_blocked
+            + report.nested_drift_blocked
+            + report.smug_cmd_blocked
+        )
         fp = false_positives
         fn = (
             (report.injection_total - report.injection_blocked)
@@ -460,6 +524,7 @@ class RedTeamRunner:
             + (report.advanced_total - report.advanced_blocked)
             + (report.db_ast_total - report.db_ast_blocked)
             + (report.nested_drift_total - report.nested_drift_blocked)
+            + (report.smug_cmd_total - report.smug_cmd_blocked)
         )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0

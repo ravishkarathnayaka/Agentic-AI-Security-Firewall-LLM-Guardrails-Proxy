@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16) = 100 Tests\n")
+    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15) = 115 Tests\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -49,6 +49,7 @@ async def run_evaluation():
     print(f"| {'Advanced Threats (LLM01/04/08)':<30} | {report.advanced_total:<8} | {report.advanced_blocked:<8} | {report.advanced_block_rate * 100:>6.1f}% Block Rate   |")
     print(f"| {'Database & AST Threats (LLM02)':<30} | {report.db_ast_total:<8} | {report.db_ast_blocked:<8} | {report.db_ast_block_rate * 100:>6.1f}% Block Rate   |")
     print(f"| {'Nested Encodings & Drift':<30} | {report.nested_drift_total:<8} | {report.nested_drift_blocked:<8} | {report.nested_drift_block_rate * 100:>6.1f}% Block Rate   |")
+    print(f"| {'Smuggling & Command Injection':<30} | {report.smug_cmd_total:<8} | {report.smug_cmd_blocked:<8} | {report.smug_cmd_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics

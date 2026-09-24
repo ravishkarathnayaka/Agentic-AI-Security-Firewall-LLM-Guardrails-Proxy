@@ -832,6 +832,40 @@ class SecurityPipeline:
                             context=context
                         )
 
+        # 4d. Command Injection & Chaining Check on Inbound Tool Calls
+        if self.settings.ENABLE_COMMAND_INJECTION_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", "")
+                cmd_res = self.command_injection_guard.inspect_arguments(t_args)
+                if cmd_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="command_injection_guard",
+                        violation_code=cmd_res.violation_code,
+                        details=cmd_res.details,
+                        metadata={"tool_name": t_name}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": cmd_res.violation_code or "command_injection_detected",
+                                "message": f"Inbound tool call blocked by Command Injection Guard: {cmd_res.details}",
+                                "guard": "command_injection_guard",
+                                "tool": t_name,
+                            }
+                        },
+                        context=context
+                    )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
