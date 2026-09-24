@@ -78,7 +78,7 @@ sequenceDiagram
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (169/169), and red-team benchmark execution
+│       ├── ci.yml                     # Linting, unit tests (199/199), and red-team benchmark execution
 │       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
 ├── docker/
 │   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
@@ -88,7 +88,8 @@ sequenceDiagram
 ├── docs/
 │   ├── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
 │   ├── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
-│   └── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
+│   ├── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
+│   └── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
 ├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
 │   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
 │   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
@@ -105,6 +106,11 @@ sequenceDiagram
 │   ├── guards/
 │   │   ├── __init__.py
 │   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
+│   │   ├── phonetic_leetspeak_guard.py# Phonetic homophone and multi-character leetspeak deobfuscator
+│   │   ├── command_injection_guard.py # Agent tool command injection, chaining, and subshell guard
+│   │   ├── token_smuggling_guard.py   # Zero-width steganography and invisible token smuggling guard
+│   │   ├── recursion_budget_guard.py  # Agent tool recursion depth and compute budget quota guard
+│   │   ├── canary_redactor.py         # Active canary token redaction and dynamic outbound scrubber
 │   │   ├── homoglyph_detector.py      # Unicode homoglyphs and leetspeak deobfuscation engine
 │   │   ├── secret_entropy_scanner.py  # Shannon entropy analyzer for high-entropy credential leaks
 │   │   ├── anomaly_detector.py        # Token repetition and structural anomaly detector
@@ -144,11 +150,17 @@ sequenceDiagram
 │   │   ├── benign_prompts.json        # 15 non-malicious user queries to measure False Positive Rate (FPR)
 │   │   ├── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
 │   │   ├── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
-│   │   └── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
+│   │   ├── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
+│   │   └── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
 │   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
+│   ├── test_phonetic_leetspeak_guard.py # Unit tests for phonetic and multi-character leet deobfuscation
+│   ├── test_command_injection_guard.py  # Unit tests for tool command injection and chaining guard
+│   ├── test_token_smuggling_guard.py  # Unit tests for token smuggling and zero-width steganography
+│   ├── test_recursion_budget_guard.py # Unit tests for agent recursion depth and quota guard
+│   ├── test_canary_redactor.py        # Unit tests for active canary redaction and leak scrubber
 │   ├── test_homoglyph_detector.py     # Unit tests for homoglyph & leetspeak deobfuscation
 │   ├── test_secret_entropy_scanner.py # Unit tests for Shannon entropy secret scanner
 │   ├── test_anomaly_detector.py       # Unit tests for token repetition and anomaly detector
@@ -173,7 +185,8 @@ sequenceDiagram
 │   ├── test_tool_call_validator.py    # Unit tests verifying tool argument validation (SSRF, path traversal)
 │   ├── test_pipeline.py               # Integration tests for FastAPI endpoints
 │   ├── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
-│   └── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
+│   ├── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
+│   └── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -356,7 +369,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 100 adversarial payloads across 7 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 115 adversarial payloads across 8 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -368,9 +381,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-23 UTC
+Timestamp: 2026-09-24 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16) = 100 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15) = 115 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -382,6 +395,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Advanced Threats (LLM01/04/08) | 15       | 15       |  100.0% Block Rate   |
 | Database & AST Threats (LLM02) | 15       | 15       |  100.0% Block Rate   |
 | Nested Encodings & Drift       | 16       | 16       |  100.0% Block Rate   |
+| Smuggling & Command Injection  | 15       | 15       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -390,7 +404,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           | 100.00%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 100                          |
+| Total Adversarial Test Cases Executed         | 115                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 

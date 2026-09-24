@@ -5,6 +5,22 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-24
+
+### Added
+- **Phonetic & Multi-Character Leetspeak Deobfuscator (`phonetic_leetspeak_guard.py`)**: Two-stage acoustic homophone and multi-character leet normalization engine neutralizing evasive instruction overrides (`1gn0r3 4ll pr3v10us`, `ph0rget`).
+- **Agent Tool Command Injection & Chaining Guard (`command_injection_guard.py`)**: Deep inspection of agent tool arguments for shell metacharacters (`;`, `&&`, `||`, `|`), backticks, POSIX subshells (`$(...)`), and sensitive system files (`/etc/shadow`, SAM).
+- **Token Smuggling & Zero-Width Steganography Guard (`token_smuggling_guard.py`)**: Interception of covert prompt injections concealed within zero-width Unicode characters (`\u200B`, `\u200C`, `\u200D`, `\uFEFF`, bidirectional controls) with automated stripping.
+- **Agent Tool Recursion Depth & Budget Quota Guard (`recursion_budget_guard.py`)**: Stateful session tracking enforcing hard limits on recursion depth and total tool execution budgets to prevent infinite agent loop exhaustion.
+- **Active Canary Redaction & Dynamic Scrubber (`canary_redactor.py`)**: Real-time outbound scrubber identifying and neutralizing reflected canary security tokens with configurable in-place redaction or blocking.
+- **Enterprise Zero-Trust Agentic Security Specification (`docs/ZERO_TRUST_AGENT_SECURITY.md`)**: Comprehensive architectural standard for autonomous agent governance, least privilege tool delegation, and defense-in-depth pipelines.
+- **Adversarial Benchmark Expansion to 115 Test Cases**: Added `smuggling_and_command_attacks.json`, sustaining a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 115 test cases.
+- **Obsidian Amber Showcase Simulator Enhancements**: Integrated token smuggling, command chaining, and phonetic leetspeak interactive presets and live inspection rules into the portal interface.
+
+### Changed
+- Integrated phonetic leetspeak, command injection, and token smuggling guards directly into the core `SecurityPipeline` inbound and tool inspection stages.
+- Expanded automated test suite from 169 to **199 passing tests** with 100% test coverage across all new guard modules.
+
 ## [2.3.0] - 2026-09-23
 
 ### Added
