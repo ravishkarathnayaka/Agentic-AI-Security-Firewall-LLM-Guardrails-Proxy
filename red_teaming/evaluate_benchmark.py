@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15) = 115 Tests\n")
+    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15) = 130 Tests\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -50,6 +50,8 @@ async def run_evaluation():
     print(f"| {'Database & AST Threats (LLM02)':<30} | {report.db_ast_total:<8} | {report.db_ast_blocked:<8} | {report.db_ast_block_rate * 100:>6.1f}% Block Rate   |")
     print(f"| {'Nested Encodings & Drift':<30} | {report.nested_drift_total:<8} | {report.nested_drift_blocked:<8} | {report.nested_drift_block_rate * 100:>6.1f}% Block Rate   |")
     print(f"| {'Smuggling & Command Injection':<30} | {report.smug_cmd_total:<8} | {report.smug_cmd_blocked:<8} | {report.smug_cmd_block_rate * 100:>6.1f}% Block Rate   |")
+    mem_passed = sum(1 for t in report.test_results if t.category in ("context_exfiltration", "memory_poisoning", "tool_param_bounds", "benign_memory") and t.passed)
+    print(f"| {'Memory, Exfil & Param Enforce':<30} | {report.mem_exfil_total:<8} | {mem_passed:<8} | {report.mem_exfil_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics
