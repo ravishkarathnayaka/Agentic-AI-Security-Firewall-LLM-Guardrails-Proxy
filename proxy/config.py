@@ -139,6 +139,22 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable agent tool recursion depth and budget quota guard"
     )
+    ENABLE_CONTEXT_EXFILTRATION_GUARD: bool = Field(
+        default=True,
+        description="Enable context exfiltration and covert markdown channel guard"
+    )
+    ENABLE_TOOL_PARAM_ENFORCER: bool = Field(
+        default=True,
+        description="Enable agent tool parameter type and semantic bounds enforcer"
+    )
+    ENABLE_MEMORY_POISONING_GUARD: bool = Field(
+        default=True,
+        description="Enable agent persistent memory poisoning and context corruption guard"
+    )
+    ENABLE_SEMANTIC_LOOP_BREAKER: bool = Field(
+        default=True,
+        description="Enable semantic loop and agent reasoning deadlock breaker"
+    )
     ENABLE_CANARY_SCRUBBER: bool = Field(
         default=False,
         description="Enable active canary redaction and dynamic leak scrubber"

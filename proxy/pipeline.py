@@ -14,10 +14,12 @@ from proxy.guards.differential_leak_guard import DifferentialLeakGuard
 from proxy.guards.hallucination_verifier import HallucinationVerifier
 from proxy.guards.canary_redactor import CanaryLeakScrubber
 from proxy.guards.command_injection_guard import CommandInjectionGuard
+from proxy.guards.context_exfiltration_guard import ContextExfiltrationGuard
 from proxy.guards.goal_drift_detector import GoalDriftDetector
 from proxy.guards.homoglyph_detector import HomoglyphDetector
 from proxy.guards.json_schema_enforcer import StructuredOutputEnforcer
 from proxy.guards.mcp_validator import MCPValidator
+from proxy.guards.memory_poisoning_guard import MemoryPoisoningGuard
 from proxy.guards.multilingual_guard import MultilingualGuard
 from proxy.guards.nested_unpack_guard import NestedUnpackGuard
 from proxy.guards.network_guard import NetworkPerimeterGuard
@@ -29,11 +31,13 @@ from proxy.guards.prompt_injection import PromptInjectionGuard
 from proxy.guards.rate_limiter import RateLimiter
 from proxy.guards.recursion_budget_guard import RecursionBudgetGuard
 from proxy.guards.secret_entropy_scanner import SecretEntropyScanner
+from proxy.guards.semantic_loop_breaker import SemanticLoopBreaker
 from proxy.guards.sql_nosql_guard import SqlNoSqlInjectionGuard
 from proxy.guards.system_prompt_guard import SystemPromptGuard
 from proxy.guards.token_padding_guard import TokenPaddingGuard
 from proxy.guards.token_smuggling_guard import TokenSmugglingGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
+from proxy.guards.tool_param_type_enforcer import ToolParamTypeEnforcer
 from proxy.guards.watermark_detector import WatermarkClassificationDetector
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
@@ -102,6 +106,10 @@ class SecurityPipeline:
         self.token_smuggling_guard = TokenSmugglingGuard()
         self.recursion_budget_guard = RecursionBudgetGuard()
         self.canary_scrubber = CanaryLeakScrubber(static_tokens=[self.settings.CANARY_TOKEN])
+        self.context_exfil_guard = ContextExfiltrationGuard()
+        self.tool_param_enforcer = ToolParamTypeEnforcer()
+        self.memory_poisoning_guard = MemoryPoisoningGuard()
+        self.semantic_loop_breaker = SemanticLoopBreaker()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -525,6 +533,64 @@ class SecurityPipeline:
                             context=context
                         )
 
+            # 1f. Context Exfiltration & Covert Channel Guard
+            if self.settings.ENABLE_CONTEXT_EXFILTRATION_GUARD and text_to_check:
+                exfil_res = self.context_exfil_guard.inspect_text(text_to_check)
+                if exfil_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="context_exfiltration_guard",
+                        violation_code=exfil_res.violation_code,
+                        details=exfil_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": exfil_res.violation_code,
+                                "message": f"Inbound prompt blocked by Context Exfiltration Guard: {exfil_res.details}",
+                                "guard": "context_exfiltration_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 1g. Agent Persistent Memory Poisoning Guard
+            if self.settings.ENABLE_MEMORY_POISONING_GUARD and text_to_check:
+                mem_res = self.memory_poisoning_guard.inspect_memory_payload(text_to_check)
+                if mem_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="memory_poisoning_guard",
+                        violation_code=mem_res.violation_code,
+                        details=mem_res.details,
+                        metadata={"message_index": msg_idx, "poison_type": mem_res.poison_type}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": mem_res.violation_code,
+                                "message": f"Inbound prompt blocked by Memory Poisoning Guard: {mem_res.details}",
+                                "guard": "memory_poisoning_guard",
+                            }
+                        },
+                        context=context
+                    )
+
             # 2. Prompt Injection Guard
             if self.settings.ENABLE_PROMPT_INJECTION_GUARD and text_to_check:
                 inj_res = self.injection_guard.inspect(text_to_check)
@@ -860,6 +926,39 @@ class SecurityPipeline:
                                 "code": cmd_res.violation_code or "command_injection_detected",
                                 "message": f"Inbound tool call blocked by Command Injection Guard: {cmd_res.details}",
                                 "guard": "command_injection_guard",
+                                "tool": t_name,
+                            }
+                        },
+                        context=context
+                    )
+        # 4e. Tool Parameter Type & Semantic Bounds Enforcer
+        if self.settings.ENABLE_TOOL_PARAM_ENFORCER and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", "")
+                param_res = self.tool_param_enforcer.validate_tool_call(t_name, t_args)
+                if param_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="tool_param_enforcer",
+                        violation_code=param_res.violation_code,
+                        details=param_res.details,
+                        metadata={"tool_name": t_name, "parameter": param_res.parameter_name}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": param_res.violation_code or "parameter_validation_failed",
+                                "message": f"Inbound tool call blocked by Parameter Enforcer: {param_res.details}",
+                                "guard": "tool_param_enforcer",
                                 "tool": t_name,
                             }
                         },
@@ -1334,6 +1433,60 @@ class SecurityPipeline:
             # 3g. Active Canary Redaction & System Leak Scrubber
             if self.settings.ENABLE_CANARY_SCRUBBER and content:
                 content, _, _ = self.canary_scrubber.scrub(content)
+
+            # 3h. Outbound Context Exfiltration Link Inspection
+            if self.settings.ENABLE_CONTEXT_EXFILTRATION_GUARD and content:
+                exfil_res = self.context_exfil_guard.inspect_text(content)
+                if exfil_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="context_exfiltration_guard",
+                        violation_code=exfil_res.violation_code,
+                        details=exfil_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": exfil_res.violation_code,
+                                "message": f"Outbound completion blocked by Context Exfiltration Guard: {exfil_res.details}",
+                                "guard": "context_exfiltration_guard",
+                            }
+                        }
+                    )
+
+            # 3i. Semantic Loop and Agent Deadlock Breaker
+            if self.settings.ENABLE_SEMANTIC_LOOP_BREAKER and content:
+                loop_res = self.semantic_loop_breaker.check_turn(context.request_id, content)
+                if loop_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="semantic_loop_breaker",
+                        violation_code=loop_res.violation_code,
+                        details=loop_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": loop_res.violation_code,
+                                "message": f"Outbound completion blocked by Semantic Loop Breaker: {loop_res.details}",
+                                "guard": "semantic_loop_breaker",
+                            }
+                        }
+                    )
 
             # 4. Optional De-Anonymization (restore PII tokens in response if configured)
             if self.settings.DE_ANONYMIZE_OUTPUT and context.reversal_map and content:
