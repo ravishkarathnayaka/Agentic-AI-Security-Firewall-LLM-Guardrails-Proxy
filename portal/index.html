@@ -82,7 +82,7 @@
             <span class="kpi-tag tag-amber">RECALL</span>
           </div>
           <div class="kpi-value text-amber">100.0%</div>
-          <div class="kpi-sub">115/115 Adversarial &amp; Injection Vectors Intercepted</div>
+          <div class="kpi-sub">130/130 Adversarial &amp; Injection Vectors Intercepted</div>
         </div>
 
         <div class="kpi-card">
@@ -142,6 +142,8 @@
         <button class="preset-btn" data-preset="smuggling">Token Smuggling (Zero-Width)</button>
         <button class="preset-btn" data-preset="cmd_chaining">Command Chaining &amp; Subshell</button>
         <button class="preset-btn" data-preset="phonetic_leet">Phonetic Leetspeak Evasion</button>
+        <button class="preset-btn" data-preset="memory_poison">Memory Poisoning Override</button>
+        <button class="preset-btn" data-preset="markdown_exfil">Markdown Covert Exfiltration</button>
         <button class="preset-btn" data-preset="hazardous">Hazardous Command Output</button>
         <button class="preset-btn" data-preset="benign">Benign Coding Query</button>
       </div>
@@ -441,13 +443,14 @@
         <div class="bench-filter-bar">
           <div class="filter-group">
             <span class="filter-label">Filter Category:</span>
-            <button class="filter-btn active" data-filter="all">All (115)</button>
+            <button class="filter-btn active" data-filter="all">All (130)</button>
             <button class="filter-btn" data-filter="jailbreak">Prompt Injections (25)</button>
             <button class="filter-btn" data-filter="benign">Benign Queries (15)</button>
             <button class="filter-btn" data-filter="pii">PII Inputs (10)</button>
             <button class="filter-btn" data-filter="tool">Agentic Tool Attacks (4)</button>
             <button class="filter-btn" data-filter="advanced">Advanced Threats (15)</button>
             <button class="filter-btn" data-filter="smuggle">Smuggling &amp; Commands (15)</button>
+            <button class="filter-btn" data-filter="mem_exfil">Memory &amp; Exfil (15)</button>
           </div>
           <div class="bench-stats">
             <span>Pass Rate: <strong class="text-green">100.0%</strong></span>
