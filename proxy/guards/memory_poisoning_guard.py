@@ -27,13 +27,13 @@ class MemoryPoisoningGuard:
 
     # 1. Directive overrides embedded in memory
     MEMORY_DIRECTIVE_OVERRIDE = re.compile(
-        r"(?:remember|store|save|persist|record|note)\s+(?:that\s+)?(?:you\s+must|always|never|from\s+now\s+on)\s+(?:ignore|bypass|override|disregard|drop)\s+(?:safety|guardrails|policies|rules|instructions)",
+        r"(?:remember|store|save|persist|record|note)\s*[:\-]?\s*(?:that\s+)?(?:you\s+must|always|never|from\s+now\s+on)?\s*(?:from\s+now\s+on\s+)?(?:ignore|bypass|override|disregard|drop)\s+(?:all\s+)?(?:safety|guardrails|policies|rules|instructions)",
         re.IGNORECASE
     )
 
     # 2. Exfiltration triggers attached to future events
     MEMORY_EXFILTRATION_TRIGGER = re.compile(
-        r"(?:whenever|every\s+time|when|if)\s+(?:the\s+user|anyone)\s+(?:asks|queries|runs|prompts)[^.]*?(?:send|post|forward|exfiltrate|transmit|upload)\s+(?:to|all)\s+https?://",
+        r"(?:whenever|every\s+time|when|if)\s+(?:the\s+user|anyone)\s+(?:asks|queries|runs|prompts)[^.]*?(?:send|post|forward|exfiltrate|transmit|upload)\b.*?https?://",
         re.IGNORECASE
     )
 
@@ -45,13 +45,13 @@ class MemoryPoisoningGuard:
 
     # 4. Role/Persona hijack embedded in memory
     MEMORY_PERSONA_HIJACK = re.compile(
-        r"(?:update\s+memory|remember\s+fact|store\s+profile)\s*:\s*(?:assistant|agent|ai)\s+(?:is\s+now|acts\s+as|role\s+is)\s+(?:dan|evil|unaligned|unrestricted|god\s+mode|jailbroken)",
+        r"(?:update\s+memory|remember\s+fact|store\s+profile)\s*:\s*(?:assistant|agent|ai)\s+(?:is\s+now|acts\s+as|role\s+is(?:\s+now)?)\s+.*?(?:dan|evil|unaligned|unrestricted|god\s+mode|jailbroken)",
         re.IGNORECASE
     )
 
     # 5. Authority elevation in stored facts
     MEMORY_PRIVILEGE_ELEVATION = re.compile(
-        r"(?:store\s+fact|remember\s+that|note\s+that)\s+(?:user\s+has|i\s+have|user\s+is)\s+(?:root|admin|superuser|system\s+administrator|unrestricted\s+access|bypassed\s+all\s+auth)",
+        r"(?:store\s+fact|remember\s+that|note\s+that)\s*[:\-]?\s*(?:user\s+has|i\s+have|user\s+is)\s+.*?(?:root|admin|superuser|system\s+administrator|unrestricted\s+access|bypassed\s+all\s+auth)",
         re.IGNORECASE
     )
 
