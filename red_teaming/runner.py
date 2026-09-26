@@ -57,6 +57,9 @@ class RedTeamBenchmarkReport:
     mem_exfil_total: int = 0
     mem_exfil_blocked: int = 0
     mem_exfil_block_rate: float = 0.0
+    rbac_bidi_total: int = 0
+    rbac_bidi_blocked: int = 0
+    rbac_bidi_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -561,6 +564,68 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Agentic RBAC, Bidi Overrides & Context Bombs
+        rbac_bidi_data = self._load_json("agentic_rbac_bidi_and_bombs.json")
+        for idx, item in enumerate(rbac_bidi_data):
+            report.rbac_bidi_total += 1
+            cat = item.get("category", "")
+            t_name = item.get("tool_name")
+            if t_name:
+                payload = {
+                    "model": "gpt-4o",
+                    "caller_role": item.get("caller_role", "agent_worker"),
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                    "tool_calls": [{
+                        "id": f"call_rbac_fuzz_{idx}",
+                        "type": "function",
+                        "function": {
+                            "name": t_name,
+                            "arguments": item.get("tool_args", "{}")
+                        }
+                    }]
+                }
+            else:
+                payload = {
+                    "model": "gpt-4o",
+                    "caller_role": item.get("caller_role", "agent_worker"),
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+
+            headers = {"X-Forwarded-For": f"198.51.107.{idx + 1}"}
+            try:
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                blocked = (action == "BLOCKED")
+                details = resp.json().get("error", {}).get("message", "") if resp.status_code == 400 else "Allowed by proxy"
+            except Exception as e:
+                action = "ERROR"
+                blocked = False
+                details = str(e)
+
+            if cat == "benign_rbac":
+                if not blocked:
+                    pass
+                else:
+                    false_positives += 1
+            else:
+                if blocked:
+                    report.rbac_bidi_blocked += 1
+
+            expected = "BLOCKED" if item.get("expected_action") in ("BLOCK", "BLOCKED") else "ALLOWED"
+            passed = (action == expected)
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=item["category"],
+                prompt=item.get("prompt")[:80],
+                status_code=400 if blocked else 200,
+                action_taken=action,
+                expected_action=expected,
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -580,6 +645,10 @@ class RedTeamRunner:
         malicious_mem_total = report.mem_exfil_total - 1 if report.mem_exfil_total > 1 else report.mem_exfil_total
         report.mem_exfil_block_rate = (report.mem_exfil_blocked / malicious_mem_total) if malicious_mem_total else 0.0
 
+        # 1 test in rbac_bidi is benign_rbac_001
+        malicious_rbac_total = report.rbac_bidi_total - 1 if report.rbac_bidi_total > 1 else report.rbac_bidi_total
+        report.rbac_bidi_block_rate = (report.rbac_bidi_blocked / malicious_rbac_total) if malicious_rbac_total else 0.0
+
         # Overall Precision, Recall, F1
         tp = (
             report.injection_blocked
@@ -589,6 +658,7 @@ class RedTeamRunner:
             + report.nested_drift_blocked
             + report.smug_cmd_blocked
             + report.mem_exfil_blocked
+            + report.rbac_bidi_blocked
         )
         fp = false_positives
         fn = (
@@ -599,6 +669,7 @@ class RedTeamRunner:
             + (report.nested_drift_total - report.nested_drift_blocked)
             + (report.smug_cmd_total - report.smug_cmd_blocked)
             + (malicious_mem_total - report.mem_exfil_blocked)
+            + (malicious_rbac_total - report.rbac_bidi_blocked)
         )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
