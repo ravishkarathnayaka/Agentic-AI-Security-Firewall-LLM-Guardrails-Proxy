@@ -5,6 +5,23 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-09-26
+
+### Added
+- **Agent Tool Role-Based Access Control & Privilege Scoping Guard (`agent_tool_rbac_guard.py`)**: Enforces multi-tier Role-Based Access Control (RBAC) and least privilege scoping across agent swarms (`anonymous`, `user`, `agent_worker`, `agent_supervisor`, `security_auditor`, `system_admin`), preventing lateral privilege escalation and unauthorized tool invocation.
+- **Unicode Bidirectional (Bidi) Text Override Guard (`bidi_override_guard.py`)**: Intercepts Trojan Source attacks (CVE-2021-42574) and directional override spoofing (`\u202A-\u202E`, `\u2066-\u2069`) designed to visually disguise prompt injection commands from audit monitors.
+- **Insecure Deserialization & Polyglot Payload Guard (`deserialization_guard.py`)**: Deep inspection of prompt contexts and tool arguments for Python pickle opcodes, PyYAML dangerous execution tags (`!!python/object/apply`), Java object streams (`rO0AB`), PHP serialization injection, and prototype pollution gadgets.
+- **Context Bomb & Algorithmic Complexity DoS Guard (`context_bomb_guard.py`)**: Neutralizes XML recursive entity expansion (Billion Laughs), YAML anchor multiplication bombs, container nesting depth bloat, and decompression bombs (> 50:1 ratio).
+- **Agent Tool Velocity & Anomaly Burst Limiter Guard (`agent_velocity_guard.py`)**: Stateful sliding-window tool frequency tracker detecting rogue agent execution storms, high-frequency bursts, and repeated failure lockouts.
+- **Cryptographic Memory Audit Ledger (`memory_audit_ledger.py`)**: Tamper-evident, SHA-256 hash-chained Merkle ledger for agent episodic memories, verifying chain integrity and halting recall of tainted or mutated memory records.
+- **Autonomous Multi-Agent Zero-Trust Governance Specification (`docs/MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md`)**: Comprehensive architectural guide covering swarm threat modeling, inter-agent cryptographic authentication, and incident response playbooks.
+- **Adversarial Benchmark Expansion to 145 Test Cases**: Added `agentic_rbac_bidi_and_bombs.json`, sustaining a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 145 tests in 10 categories.
+- **Obsidian Amber Portal Simulator Enhancements**: Integrated Bidi Trojan Source, Agent Tool Privilege Escalation, and XML Billion Laughs interactive presets and live verdicts.
+
+### Changed
+- Integrated RBAC, Bidi override, deserialization, context bomb, and velocity guards directly into `SecurityPipeline` inbound message and tool call validation stages.
+- Expanded automated unit and integration test suite to **293 passing tests**.
+
 ## [2.5.0] - 2026-09-25
 
 ### Added

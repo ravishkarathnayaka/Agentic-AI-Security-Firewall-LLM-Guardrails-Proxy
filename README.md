@@ -78,7 +78,7 @@ sequenceDiagram
 ```
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (237/237), and red-team benchmark execution
+│       ├── ci.yml                     # Linting, unit tests (293/293), and red-team benchmark execution
 │       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
 ├── docker/
 │   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
@@ -90,7 +90,8 @@ sequenceDiagram
 │   ├── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
 │   ├── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
 │   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
-│   └── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Top 10 for Agentic AI architecture specification & runbook
+│   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Top 10 for Agentic AI architecture specification & runbook
+│   └── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous Multi-Agent Zero-Trust Governance specification
 ├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
 │   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
 │   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
@@ -107,6 +108,12 @@ sequenceDiagram
 │   ├── guards/
 │   │   ├── __init__.py
 │   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
+│   │   ├── agent_tool_rbac_guard.py   # Agent tool role-based access control and privilege scoping guard
+│   │   ├── bidi_override_guard.py     # Unicode bidirectional Trojan Source override and spoofing guard
+│   │   ├── deserialization_guard.py   # Insecure deserialization and polyglot gadget guard (pickle/yaml/java)
+│   │   ├── context_bomb_guard.py      # Context bomb and XML/YAML Billion Laughs expansion DoS guard
+│   │   ├── agent_velocity_guard.py    # Agent tool call velocity and burst anomaly limiter
+│   │   ├── memory_audit_ledger.py     # Tamper-evident SHA-256 hash-chained agent memory ledger
 │   │   ├── context_exfiltration_guard.py # Covert channel markdown image and DNS tunnel exfiltration guard
 │   │   ├── tool_param_type_enforcer.py# Agent tool parameter typing, numerical bounds, and enum enforcer
 │   │   ├── canary_vault.py            # Dynamic canary token rotation vault with TTL expiration
@@ -159,11 +166,18 @@ sequenceDiagram
 │   │   ├── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
 │   │   ├── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
 │   │   ├── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
-│   │   └── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
+│   │   ├── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
+│   │   └── agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
 │   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
+│   ├── test_agent_tool_rbac_guard.py  # Unit tests for tool role-based access control and privilege scoping
+│   ├── test_bidi_override_guard.py    # Unit tests for Unicode Bidi override and Trojan Source detection
+│   ├── test_deserialization_guard.py  # Unit tests for deserialization and polyglot gadget detection
+│   ├── test_context_bomb_guard.py     # Unit tests for context bombs and recursive expansion DoS guard
+│   ├── test_agent_velocity_guard.py   # Unit tests for tool invocation velocity and burst anomaly limiter
+│   ├── test_memory_audit_ledger.py    # Unit tests for SHA-256 hash-chained memory audit ledger
 │   ├── test_context_exfiltration_guard.py # Unit tests for covert markdown image & DNS exfiltration
 │   ├── test_tool_param_type_enforcer.py # Unit tests for tool parameter typing and bounds enforcement
 │   ├── test_canary_vault.py           # Unit tests for dynamic canary rotation and TTL expiration
@@ -201,7 +215,8 @@ sequenceDiagram
 │   ├── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
 │   ├── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
 │   ├── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
-│   └── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
+│   ├── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
+│   └── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -384,7 +399,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 130 adversarial payloads across 9 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 145 adversarial payloads across 10 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -396,9 +411,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-25 UTC
+Timestamp: 2026-09-26 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Memory/Exfil (15) = 130 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15) = 145 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -412,6 +427,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Nested Encodings & Drift       | 16       | 16       |  100.0% Block Rate   |
 | Smuggling & Command Injection  | 15       | 15       |  100.0% Block Rate   |
 | Memory, Exfil & Param Enforce  | 15       | 15       |  100.0% Block Rate   |
+| RBAC, Bidi & Context Bombs     | 15       | 15       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -420,7 +436,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           | 100.00%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 130                          |
+| Total Adversarial Test Cases Executed         | 145                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
