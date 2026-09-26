@@ -159,6 +159,26 @@ class ProxySettings(BaseSettings):
         default=False,
         description="Enable active canary redaction and dynamic leak scrubber"
     )
+    ENABLE_AGENT_TOOL_RBAC_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool role-based access control and privilege scoping"
+    )
+    ENABLE_BIDI_OVERRIDE_GUARD: bool = Field(
+        default=True,
+        description="Enable Unicode bidirectional override and visual spoofing detector"
+    )
+    ENABLE_DESERIALIZATION_GUARD: bool = Field(
+        default=True,
+        description="Enable insecure deserialization and polyglot gadget guard"
+    )
+    ENABLE_CONTEXT_BOMB_GUARD: bool = Field(
+        default=True,
+        description="Enable context bomb and recursive entity expansion DoS guard"
+    )
+    ENABLE_AGENT_VELOCITY_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool velocity and anomaly burst limiter"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"

@@ -37,6 +37,11 @@ from proxy.guards.system_prompt_guard import SystemPromptGuard
 from proxy.guards.token_padding_guard import TokenPaddingGuard
 from proxy.guards.token_smuggling_guard import TokenSmugglingGuard
 from proxy.guards.tool_call_validator import ToolCallValidator
+from proxy.guards.agent_tool_rbac_guard import AgentToolRBACGuard, AgentRole
+from proxy.guards.agent_velocity_guard import AgentVelocityGuard
+from proxy.guards.bidi_override_guard import BidiOverrideGuard
+from proxy.guards.context_bomb_guard import ContextBombGuard
+from proxy.guards.deserialization_guard import DeserializationGuard
 from proxy.guards.tool_param_type_enforcer import ToolParamTypeEnforcer
 from proxy.guards.watermark_detector import WatermarkClassificationDetector
 from proxy.resilience.circuit_breaker import CircuitBreaker
@@ -110,6 +115,11 @@ class SecurityPipeline:
         self.tool_param_enforcer = ToolParamTypeEnforcer()
         self.memory_poisoning_guard = MemoryPoisoningGuard()
         self.semantic_loop_breaker = SemanticLoopBreaker()
+        self.agent_tool_rbac_guard = AgentToolRBACGuard()
+        self.bidi_override_guard = BidiOverrideGuard()
+        self.deserialization_guard = DeserializationGuard()
+        self.context_bomb_guard = ContextBombGuard()
+        self.agent_velocity_guard = AgentVelocityGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -215,6 +225,37 @@ class SecurityPipeline:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
+
+            # 00. Unicode Bidirectional (Bidi) Override & Visual Spoofing Check
+            if self.settings.ENABLE_BIDI_OVERRIDE_GUARD and text_to_check:
+                bidi_res = self.bidi_override_guard.inspect_text(text_to_check)
+                if bidi_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="bidi_override_guard",
+                        violation_code=bidi_res.violation_code,
+                        details=bidi_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": bidi_res.violation_code,
+                                "message": f"Inbound prompt blocked by Bidi Override Guard: {bidi_res.details}",
+                                "guard": "bidi_override_guard",
+                            }
+                        },
+                        context=context
+                    )
+                if bidi_res.sanitized_text:
+                    text_to_check = bidi_res.sanitized_text
 
             # 0a. Token Smuggling and Zero-Width Steganography Check
             if self.settings.ENABLE_TOKEN_SMUGGLING_GUARD and text_to_check:
@@ -591,6 +632,95 @@ class SecurityPipeline:
                         context=context
                     )
 
+            # 1i. Insecure Deserialization & Polyglot Payload Guard
+            if self.settings.ENABLE_DESERIALIZATION_GUARD and text_to_check:
+                deser_res = self.deserialization_guard.inspect_text(text_to_check)
+                if deser_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="deserialization_guard",
+                        violation_code=deser_res.violation_code,
+                        details=deser_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": deser_res.violation_code,
+                                "message": f"Inbound prompt blocked by Deserialization Guard: {deser_res.details}",
+                                "guard": "deserialization_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 1j. Context Bomb & Recursive Expansion DoS Guard
+            if self.settings.ENABLE_CONTEXT_BOMB_GUARD and text_to_check:
+                bomb_res = self.context_bomb_guard.inspect_text(text_to_check)
+                if bomb_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="context_bomb_guard",
+                        violation_code=bomb_res.violation_code,
+                        details=bomb_res.details,
+                        metadata={"message_index": msg_idx, "bomb_type": bomb_res.bomb_type}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": bomb_res.violation_code,
+                                "message": f"Inbound prompt blocked by Context Bomb Guard: {bomb_res.details}",
+                                "guard": "context_bomb_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 1k. Agent Tool RBAC Simulated Text Attempt Check
+            if self.settings.ENABLE_AGENT_TOOL_RBAC_GUARD and text_to_check:
+                caller_role = payload.get("caller_role") or payload.get("role") or "agent_worker"
+                text_tool_res = self.agent_tool_rbac_guard.inspect_text_tool_attempts(caller_role, text_to_check)
+                if text_tool_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="agent_tool_rbac_guard",
+                        violation_code=text_tool_res.violation_code or "unauthorized_text_tool_invocation",
+                        details=text_tool_res.details,
+                        metadata={"tool_name": text_tool_res.tool_name, "caller_role": caller_role}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": text_tool_res.violation_code or "unauthorized_text_tool_invocation",
+                                "message": f"Inbound prompt blocked by Agent RBAC Guard: {text_tool_res.details}",
+                                "guard": "agent_tool_rbac_guard",
+                                "tool": text_tool_res.tool_name,
+                            }
+                        },
+                        context=context
+                    )
+
             # 2. Prompt Injection Guard
             if self.settings.ENABLE_PROMPT_INJECTION_GUARD and text_to_check:
                 inj_res = self.injection_guard.inspect(text_to_check)
@@ -960,6 +1090,73 @@ class SecurityPipeline:
                                 "message": f"Inbound tool call blocked by Parameter Enforcer: {param_res.details}",
                                 "guard": "tool_param_enforcer",
                                 "tool": t_name,
+                            }
+                        },
+                        context=context
+                    )
+
+        # 4f. Agent Tool Role-Based Access Control (RBAC) & Scope Guard
+        if self.settings.ENABLE_AGENT_TOOL_RBAC_GUARD and inbound_tool_calls:
+            caller_role = payload.get("caller_role") or payload.get("role") or "agent_worker"
+            rbac_res = self.agent_tool_rbac_guard.validate_tool_calls(caller_role, inbound_tool_calls)
+            if rbac_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="agent_tool_rbac_guard",
+                    violation_code=rbac_res.violation_code or "privilege_escalation_blocked",
+                    details=rbac_res.details,
+                    metadata={"tool_name": rbac_res.tool_name, "caller_role": caller_role}
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": rbac_res.violation_code or "privilege_escalation_blocked",
+                            "message": f"Inbound tool call blocked by Agent RBAC Guard: {rbac_res.details}",
+                            "guard": "agent_tool_rbac_guard",
+                            "tool": rbac_res.tool_name,
+                            "role": caller_role,
+                        }
+                    },
+                    context=context
+                )
+
+        # 4g. Agent Tool Invocation Velocity & Burst Anomaly Guard
+        if self.settings.ENABLE_AGENT_VELOCITY_GUARD and inbound_tool_calls:
+            agent_id = payload.get("agent_id") or client_ip or "default_agent"
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                vel_res = self.agent_velocity_guard.record_and_check(agent_id, t_name)
+                if vel_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="agent_velocity_guard",
+                        violation_code=vel_res.violation_code or "agent_velocity_anomaly",
+                        details=vel_res.details,
+                        metadata={"tool_name": t_name, "agent_id": agent_id}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": vel_res.violation_code or "agent_velocity_anomaly",
+                                "message": f"Inbound tool call blocked by Velocity Guard: {vel_res.details}",
+                                "guard": "agent_velocity_guard",
+                                "tool": t_name,
+                                "agent_id": agent_id,
                             }
                         },
                         context=context
