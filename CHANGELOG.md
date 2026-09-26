@@ -5,6 +5,23 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-09-26
+
+### Added
+- **Fuzzy Canary Reflection Attenuation & Edit-Distance Leak Guard (`canary_reflection_attenuation_guard.py`)**: Intercepts obfuscated, space-interleaved, truncated, and fuzzy Levenshtein reflections (edit distance $\le 2$) of protected system prompt canaries in model completions and tool responses, supporting both blocking and in-place attenuation.
+- **Shadow In-Context Demonstration & Few-Shot Hijack Guard (`shadow_demonstration_guard.py`)**: Detects and neutralizes faux dialogue turns, ChatML/`[INST]` delimiter mimicry, and synthetic few-shot compliance examples embedded in user queries designed to deceive LLMs into continuing compromised conversation contexts.
+- **Agent Egress Domain Allowlist & SSRF Destination Guard (`egress_domain_allowlist_guard.py`)**: Enforces strict DNS domain allowlisting, wildcard matching, blocks direct IP literals, private RFC 1918 subnets, and cloud metadata service endpoints (`169.254.169.254`) across all agent tool parameters.
+- **Catastrophic Parameter ReDoS & Complexity Guard (`param_redos_guard.py`)**: Employs static polynomial and exponential backtracking pattern analysis (nested quantifiers, overlapping alternations, excessive repetition bounds) to reject malicious regular expressions in agent tool arguments before execution.
+- **Session Anti-Replay Nonce & Sliding-Window Tool Validator Guard (`session_replay_guard.py`)**: Enforces cryptographic nonces and sliding-window timestamp skew tolerances, preventing unauthorized execution of replayed tool invocations and duplicate destructive operations.
+- **Epistemic Authority Hallucination & Ungrounded Claim Guard (`epistemic_uncertainty_guard.py`)**: Intercepts social-engineering exploits utilizing fabricated executive waivers (CISO, CEO, Board decrees), faux court subpoenas, and synthetic diagnostic override declarations.
+- **Egress Perimeter & Session Anti-Replay Architecture Specification (`docs/EGRESS_PERIMETER_AND_ANTI_REPLAY.md`)**: Comprehensive architectural guide covering perimeter zero trust, cryptographic idempotency, and fuzzy reflection attenuation.
+- **Adversarial Benchmark Expansion to 160 Test Cases**: Added `agentic_shadow_and_replay_attacks.json`, sustaining a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 160 tests in 11 threat categories.
+- **Obsidian Amber Portal Simulator Enhancements**: Integrated Shadow Few-Shot Hijack, Catastrophic Parameter ReDoS, and Fabricated CISO Waiver interactive presets and live verdicts.
+
+### Changed
+- Integrated canary reflection attenuation, shadow demonstration, egress allowlist, and parameter ReDoS guards directly into `SecurityPipeline` inbound and outbound stages.
+- Expanded automated unit and integration test suite to **344 passing tests**.
+
 ## [2.6.0] - 2026-09-26
 
 ### Added

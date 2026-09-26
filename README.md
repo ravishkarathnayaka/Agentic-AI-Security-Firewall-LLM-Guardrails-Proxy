@@ -108,6 +108,12 @@ sequenceDiagram
 │   ├── guards/
 │   │   ├── __init__.py
 │   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
+│   │   ├── canary_reflection_attenuation_guard.py # Fuzzy canary Levenshtein reflection attenuation guard
+│   │   ├── shadow_demonstration_guard.py # Shadow in-context few-shot demonstration and hijack guard
+│   │   ├── egress_domain_allowlist_guard.py # Agent tool egress domain allowlist and SSRF destination guard
+│   │   ├── param_redos_guard.py       # Catastrophic parameter ReDoS and regex complexity guard
+│   │   ├── session_replay_guard.py    # Session anti-replay nonce and sliding-window tool validator
+│   │   ├── epistemic_uncertainty_guard.py # Epistemic authority hallucination and ungrounded claim guard
 │   │   ├── agent_tool_rbac_guard.py   # Agent tool role-based access control and privilege scoping guard
 │   │   ├── bidi_override_guard.py     # Unicode bidirectional Trojan Source override and spoofing guard
 │   │   ├── deserialization_guard.py   # Insecure deserialization and polyglot gadget guard (pickle/yaml/java)
@@ -167,11 +173,18 @@ sequenceDiagram
 │   │   ├── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
 │   │   ├── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
 │   │   ├── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
-│   │   └── agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
+│   │   ├── agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
+│   │   └── agentic_shadow_and_replay_attacks.json # 15 vectors for shadow few-shot, egress SSRF, ReDoS, and replay
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
 │   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
+│   ├── test_canary_reflection_attenuation_guard.py # Unit tests for fuzzy canary reflection attenuation
+│   ├── test_shadow_demonstration_guard.py # Unit tests for shadow few-shot demonstration guard
+│   ├── test_egress_domain_allowlist_guard.py # Unit tests for agent egress domain allowlist guard
+│   ├── test_param_redos_guard.py      # Unit tests for parameter ReDoS complexity guard
+│   ├── test_session_replay_guard.py   # Unit tests for session anti-replay nonce validator
+│   ├── test_epistemic_uncertainty_guard.py # Unit tests for epistemic authority and ungrounded claim guard
 │   ├── test_agent_tool_rbac_guard.py  # Unit tests for tool role-based access control and privilege scoping
 │   ├── test_bidi_override_guard.py    # Unit tests for Unicode Bidi override and Trojan Source detection
 │   ├── test_deserialization_guard.py  # Unit tests for deserialization and polyglot gadget detection
@@ -216,7 +229,13 @@ sequenceDiagram
 │   ├── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
 │   ├── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
 │   ├── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
-│   └── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
+│   ├── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
+│   └── test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
+├── docs/
+│   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise architecture for zero-trust autonomous agent governance
+│   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Agentic AI Top 10 threat model & proxy defense mapping
+│   ├── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous multi-agent zero-trust governance specification
+│   └── EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -399,7 +418,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 145 adversarial payloads across 10 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 160 adversarial payloads across 11 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -413,7 +432,7 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
 Timestamp: 2026-09-26 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15) = 145 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15) = 160 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -428,6 +447,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Smuggling & Command Injection  | 15       | 15       |  100.0% Block Rate   |
 | Memory, Exfil & Param Enforce  | 15       | 15       |  100.0% Block Rate   |
 | RBAC, Bidi & Context Bombs     | 15       | 15       |  100.0% Block Rate   |
+| Shadow Demo, Egress & ReDoS    | 15       | 15       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -436,7 +456,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           | 100.00%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 145                          |
+| Total Adversarial Test Cases Executed         | 160                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
