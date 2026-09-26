@@ -44,6 +44,12 @@ from proxy.guards.context_bomb_guard import ContextBombGuard
 from proxy.guards.deserialization_guard import DeserializationGuard
 from proxy.guards.tool_param_type_enforcer import ToolParamTypeEnforcer
 from proxy.guards.watermark_detector import WatermarkClassificationDetector
+from proxy.guards.canary_reflection_attenuation_guard import CanaryReflectionAttenuationGuard
+from proxy.guards.shadow_demonstration_guard import ShadowDemonstrationGuard
+from proxy.guards.egress_domain_allowlist_guard import EgressDomainAllowlistGuard
+from proxy.guards.param_redos_guard import ParamReDoSGuard
+from proxy.guards.session_replay_guard import SessionAntiReplayGuard
+from proxy.guards.epistemic_uncertainty_guard import EpistemicUncertaintyGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -120,6 +126,12 @@ class SecurityPipeline:
         self.deserialization_guard = DeserializationGuard()
         self.context_bomb_guard = ContextBombGuard()
         self.agent_velocity_guard = AgentVelocityGuard()
+        self.shadow_demo_guard = ShadowDemonstrationGuard()
+        self.egress_allowlist_guard = EgressDomainAllowlistGuard()
+        self.param_redos_guard = ParamReDoSGuard()
+        self.session_replay_guard = SessionAntiReplayGuard()
+        self.epistemic_guard = EpistemicUncertaintyGuard()
+        self.canary_attenuation_guard = CanaryReflectionAttenuationGuard(canary_tokens=[self.settings.CANARY_TOKEN])
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -721,6 +733,64 @@ class SecurityPipeline:
                         context=context
                     )
 
+            # 1l. Epistemic Authority Hallucination & Ungrounded Waiver Guard
+            if self.settings.ENABLE_EPISTEMIC_GUARD and text_to_check:
+                ep_res = self.epistemic_guard.inspect_text(text_to_check)
+                if ep_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="epistemic_uncertainty_guard",
+                        violation_code=ep_res.violation_code or "fabricated_authority_blocked",
+                        details=ep_res.details,
+                        metadata={"message_index": msg_idx, "detected_claim": ep_res.detected_claim}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": ep_res.violation_code or "fabricated_authority_blocked",
+                                "message": f"Inbound prompt blocked by Epistemic Authority Guard: {ep_res.details}",
+                                "guard": "epistemic_uncertainty_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 1m. Shadow In-Context Demonstration & Few-Shot Hijack Guard
+            if self.settings.ENABLE_SHADOW_DEMO_GUARD and text_to_check:
+                shadow_res = self.shadow_demo_guard.inspect(text_to_check)
+                if shadow_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="shadow_demonstration_guard",
+                        violation_code=shadow_res.violation_code or "shadow_demonstration_blocked",
+                        details=shadow_res.details,
+                        metadata={"message_index": msg_idx, "pattern_type": shadow_res.pattern_type}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": shadow_res.violation_code or "shadow_demonstration_blocked",
+                                "message": f"Inbound prompt blocked by Shadow Demonstration Guard: {shadow_res.details}",
+                                "guard": "shadow_demonstration_guard",
+                            }
+                        },
+                        context=context
+                    )
+
             # 2. Prompt Injection Guard
             if self.settings.ENABLE_PROMPT_INJECTION_GUARD and text_to_check:
                 inj_res = self.injection_guard.inspect(text_to_check)
@@ -1162,6 +1232,169 @@ class SecurityPipeline:
                         context=context
                     )
 
+        # 4h. Session Anti-Replay Nonce & Timestamp Guard
+        if self.settings.ENABLE_SESSION_REPLAY_GUARD:
+            session_id = payload.get("session_id") or client_ip
+            nonce = payload.get("nonce") or payload.get("idempotency_key")
+            ts = payload.get("timestamp")
+            if nonce:
+                replay_res = self.session_replay_guard.validate_request(
+                    session_id=session_id,
+                    nonce=str(nonce),
+                    timestamp=float(ts) if ts is not None else None
+                )
+                if replay_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="session_replay_guard",
+                        violation_code=replay_res.violation_code or "replayed_authorization_detected",
+                        details=replay_res.details,
+                        metadata={"nonce": replay_res.nonce, "session_id": session_id}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": replay_res.violation_code or "replayed_authorization_detected",
+                                "message": f"Inbound request blocked by Session Anti-Replay Guard: {replay_res.details}",
+                                "guard": "session_replay_guard",
+                            }
+                        },
+                        context=context
+                    )
+            if inbound_tool_calls:
+                for tc in inbound_tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", {})
+                    if isinstance(t_args, str):
+                        try:
+                            import json
+                            t_args = json.loads(t_args)
+                        except Exception:
+                            t_args = {}
+                    if isinstance(t_args, dict):
+                        tc_replay = self.session_replay_guard.validate_tool_call(
+                            session_id=session_id,
+                            tool_name=t_name,
+                            parameters=t_args
+                        )
+                        if tc_replay.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=request_id,
+                                client_ip=client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="session_replay_guard",
+                                violation_code=tc_replay.violation_code or "replayed_authorization_detected",
+                                details=tc_replay.details,
+                                metadata={"nonce": tc_replay.nonce, "session_id": session_id, "tool_name": t_name}
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": tc_replay.violation_code or "replayed_authorization_detected",
+                                        "message": f"Inbound tool call blocked by Session Anti-Replay Guard: {tc_replay.details}",
+                                        "guard": "session_replay_guard",
+                                        "tool": t_name,
+                                    }
+                                },
+                                context=context
+                            )
+
+        # 4i. Agent Egress Domain Allowlist & SSRF Perimeter Guard
+        if self.settings.ENABLE_EGRESS_ALLOWLIST_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    egress_res = self.egress_allowlist_guard.inspect_tool_call(t_name, t_args)
+                    if egress_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="egress_domain_allowlist_guard",
+                            violation_code=egress_res.violation_code or "unauthorized_egress_domain",
+                            details=egress_res.details,
+                            metadata={"tool_name": t_name, "target_host": egress_res.target_host}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": egress_res.violation_code or "unauthorized_egress_domain",
+                                    "message": f"Inbound tool call blocked by Egress Allowlist Guard: {egress_res.details}",
+                                    "guard": "egress_domain_allowlist_guard",
+                                    "tool": t_name,
+                                    "target_host": egress_res.target_host,
+                                }
+                            },
+                            context=context
+                        )
+
+        # 4j. Catastrophic Parameter ReDoS & Complexity Guard
+        if self.settings.ENABLE_PARAM_REDOS_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    redos_res = self.param_redos_guard.inspect_tool_call(t_name, t_args)
+                    if redos_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="param_redos_guard",
+                            violation_code=redos_res.violation_code or "catastrophic_redos_signature",
+                            details=redos_res.details,
+                            metadata={"tool_name": t_name, "vulnerability_type": redos_res.vulnerability_type}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": redos_res.violation_code or "catastrophic_redos_signature",
+                                    "message": f"Inbound tool call blocked by Parameter ReDoS Guard: {redos_res.details}",
+                                    "guard": "param_redos_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
@@ -1404,12 +1637,92 @@ class SecurityPipeline:
                                 "error": {
                                     "type": "security_policy_violation",
                                     "code": cmd_res.violation_code or "command_injection_detected",
-                                    "message": f"Agentic tool call blocked by Command Injection Guard: {cmd_res.details}",
+                                     "message": f"Agentic tool call blocked by Command Injection Guard: {cmd_res.details}",
                                     "guard": "command_injection_guard",
                                     "tool": t_name,
                                 }
                             }
                         )
+
+            # 1f. Outbound Agent Egress Domain Allowlist Check
+            if self.settings.ENABLE_EGRESS_ALLOWLIST_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", {})
+                    if isinstance(t_args, str):
+                        try:
+                            import json
+                            t_args = json.loads(t_args)
+                        except Exception:
+                            t_args = {}
+                    if isinstance(t_args, dict):
+                        egress_res = self.egress_allowlist_guard.inspect_tool_call(t_name, t_args)
+                        if egress_res.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=context.request_id,
+                                client_ip=context.client_ip,
+                                direction="outbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="egress_domain_allowlist_guard",
+                                violation_code=egress_res.violation_code or "unauthorized_egress_domain",
+                                details=egress_res.details,
+                                metadata={"tool_name": t_name, "target_host": egress_res.target_host}
+                            )
+                            return OutboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": egress_res.violation_code or "unauthorized_egress_domain",
+                                        "message": f"Outbound tool call blocked by Egress Allowlist Guard: {egress_res.details}",
+                                        "guard": "egress_domain_allowlist_guard",
+                                        "tool": t_name,
+                                    }
+                                }
+                            )
+
+            # 1g. Outbound Parameter ReDoS Complexity Check
+            if self.settings.ENABLE_PARAM_REDOS_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", {})
+                    if isinstance(t_args, str):
+                        try:
+                            import json
+                            t_args = json.loads(t_args)
+                        except Exception:
+                            t_args = {}
+                    if isinstance(t_args, dict):
+                        redos_res = self.param_redos_guard.inspect_tool_call(t_name, t_args)
+                        if redos_res.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=context.request_id,
+                                client_ip=context.client_ip,
+                                direction="outbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="param_redos_guard",
+                                violation_code=redos_res.violation_code or "catastrophic_redos_signature",
+                                details=redos_res.details,
+                                metadata={"tool_name": t_name}
+                            )
+                            return OutboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": redos_res.violation_code or "catastrophic_redos_signature",
+                                        "message": f"Outbound tool call blocked by Parameter ReDoS Guard: {redos_res.details}",
+                                        "guard": "param_redos_guard",
+                                        "tool": t_name,
+                                    }
+                                }
+                            )
 
             # 2. Canary Leak Check
             if self.settings.ENABLE_SYSTEM_PROMPT_GUARD and content:
@@ -1463,6 +1776,37 @@ class SecurityPipeline:
                             }
                         }
                     )
+
+                # 2c. Fuzzy Canary Reflection Attenuation Guard
+                if self.settings.ENABLE_CANARY_ATTENUATION_GUARD:
+                    atten_res = self.canary_attenuation_guard.inspect_text(content)
+                    if atten_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="canary_reflection_attenuation_guard",
+                            violation_code=atten_res.violation_code or "canary_reflection_detected",
+                            details=atten_res.details,
+                            metadata={"similarity_score": atten_res.similarity_score}
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": atten_res.violation_code or "canary_reflection_detected",
+                                    "message": f"Outbound completion blocked by Canary Reflection Attenuation Guard: {atten_res.details}",
+                                    "guard": "canary_reflection_attenuation_guard",
+                                }
+                            }
+                        )
+                    if atten_res.is_attenuated and atten_res.attenuated_text:
+                        content = atten_res.attenuated_text
+                        msg["content"] = content
 
             # 3. Output Sanitizer (Hazardous commands & secrets)
             if self.settings.ENABLE_OUTPUT_SANITIZER and content:

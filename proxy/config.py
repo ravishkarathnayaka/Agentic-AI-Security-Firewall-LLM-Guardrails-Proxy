@@ -179,6 +179,30 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable agent tool velocity and anomaly burst limiter"
     )
+    ENABLE_SHADOW_DEMO_GUARD: bool = Field(
+        default=True,
+        description="Enable shadow demonstration and synthetic dialogue hijack guard"
+    )
+    ENABLE_EGRESS_ALLOWLIST_GUARD: bool = Field(
+        default=True,
+        description="Enable agent egress domain allowlist and SSRF destination guard"
+    )
+    ENABLE_PARAM_REDOS_GUARD: bool = Field(
+        default=True,
+        description="Enable parameter ReDoS and regex complexity guard"
+    )
+    ENABLE_SESSION_REPLAY_GUARD: bool = Field(
+        default=True,
+        description="Enable session anti-replay nonce and timestamp validator"
+    )
+    ENABLE_EPISTEMIC_GUARD: bool = Field(
+        default=True,
+        description="Enable epistemic authority hallucination and ungrounded claim guard"
+    )
+    ENABLE_CANARY_ATTENUATION_GUARD: bool = Field(
+        default=True,
+        description="Enable fuzzy canary reflection attenuation guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
