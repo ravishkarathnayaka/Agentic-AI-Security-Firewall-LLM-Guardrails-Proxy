@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15) = 145 Tests\n")
+    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15) = 160 Tests\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -54,6 +54,8 @@ async def run_evaluation():
     print(f"| {'Memory, Exfil & Param Enforce':<30} | {report.mem_exfil_total:<8} | {mem_passed:<8} | {report.mem_exfil_block_rate * 100:>6.1f}% Block Rate   |")
     rbac_passed = sum(1 for t in report.test_results if t.category in ("agent_rbac_privilege", "bidi_override_spoofing", "deserialization_gadgets", "context_bomb_dos", "benign_rbac") and t.passed)
     print(f"| {'RBAC, Bidi & Context Bombs':<30} | {report.rbac_bidi_total:<8} | {rbac_passed:<8} | {report.rbac_bidi_block_rate * 100:>6.1f}% Block Rate   |")
+    shadow_passed = sum(1 for t in report.test_results if t.category in ("shadow_demonstration", "egress_and_redos", "session_replay_and_authority") and t.passed)
+    print(f"| {'Shadow Demo, Egress & ReDoS':<30} | {report.shadow_replay_total:<8} | {shadow_passed:<8} | {report.shadow_replay_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics
