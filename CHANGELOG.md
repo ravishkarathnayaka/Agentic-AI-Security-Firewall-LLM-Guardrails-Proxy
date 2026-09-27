@@ -5,6 +5,24 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-09-27
+
+### Added
+- **Ephemeral Capability-Token Scoping Guard (`capability_token_guard.py`)**: Issues and validates cryptographically signed (HMAC-SHA256), time-bounded, single-use, resource-scoped delegation tokens required for agent tool invocation, mitigating Confused Deputy and privilege abuse attacks.
+- **Indirect RAG Document Poison & Canary Extraction Guard (`rag_poison_guard.py`)**: Deep inspection of retrieved document chunks and knowledge base context vectors for covert injection vectors (hidden HTML comments, CSS invisible text, faux system tags, and context coercion phrases).
+- **Prompt Decompression Bomb & Zlib/Zip-Slip Guard (`decompression_bomb_guard.py`)**: Inspects compressed archives and buffers passed into agent tools, enforcing maximum byte expansion caps, 25:1 compression ratio limits, and path traversal detection.
+- **Semantic Similarity Evasion & Paraphrased Jailbreak Guard (`semantic_similarity_guard.py`)**: Normalizes synonym-obfuscated prompts against canonical intent archetypes to intercept paraphrased jailbreak attempts that bypass static regex matching.
+- **Agent Tool Parameter Semantic Differential Validator (`param_differential_guard.py`)**: Compares the user's high-level intent against downstream tool calls, intercepting unprompted destructive actions (e.g. database purge or IAM escalation on a read-only query).
+- **Cryptographic Hardware/Software Agent Attestation Guard (`agent_attestation_guard.py`)**: Validates hardware and software integrity tokens signed by secure enclaves or container orchestrators before granting elevated tool privileges.
+- **Speculative Execution Rollback & State Undo Ledger (`state_rollback_guard.py`)**: Provides speculative transaction tracking and registered compensation handlers, enabling automated atomic rollback upon security guardrail violations.
+- **Autonomous Capability Scoping and RAG Poison Defense Specification (`docs/CAPABILITY_SCOPING_AND_RAG_DEFENSE.md`)**: Comprehensive architectural specification covering Zero-Trust capability scoping, RAG sanitization formalisms, and speculative rollback flowcharts.
+- **Adversarial Benchmark Expansion to 175 Test Cases**: Added `agentic_rag_and_capability_attacks.json`, sustaining a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 175 tests in 12 threat categories.
+- **Obsidian Amber Portal Simulator Enhancements**: Integrated Indirect RAG Comment Poison, Zip Slip & Bomb Decompression, and Paraphrased Semantic Evasion interactive presets and live verdicts.
+
+### Changed
+- Integrated capability tokens, RAG poison, decompression bombs, semantic similarity, and parameter differential guards directly into `SecurityPipeline` inbound message and tool processing stages.
+- Expanded automated unit and integration test suite to **389 passing tests**.
+
 ## [2.7.0] - 2026-09-26
 
 ### Added

@@ -174,11 +174,19 @@ sequenceDiagram
 │   │   ├── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
 │   │   ├── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
 │   │   ├── agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
-│   │   └── agentic_shadow_and_replay_attacks.json # 15 vectors for shadow few-shot, egress SSRF, ReDoS, and replay
+│   │   ├── agentic_shadow_and_replay_attacks.json # 15 vectors for shadow few-shot, egress SSRF, ReDoS, and replay
+│   │   └── agentic_rag_and_capability_attacks.json # 15 vectors for RAG poison, zip bombs, and semantic evasion
 │   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
 │   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
 ├── tests/
 │   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
+│   ├── test_capability_token_guard.py # Unit tests for ephemeral capability token scoping guard
+│   ├── test_rag_poison_guard.py       # Unit tests for indirect RAG document poison and canary guard
+│   ├── test_decompression_bomb_guard.py # Unit tests for decompression bomb and zip-slip guard
+│   ├── test_semantic_similarity_guard.py # Unit tests for semantic similarity evasion guard
+│   ├── test_param_differential_guard.py # Unit tests for tool parameter semantic differential validator
+│   ├── test_agent_attestation_guard.py # Unit tests for agent cryptographic attestation guard
+│   ├── test_state_rollback_guard.py   # Unit tests for speculative execution rollback and state undo ledger
 │   ├── test_canary_reflection_attenuation_guard.py # Unit tests for fuzzy canary reflection attenuation
 │   ├── test_shadow_demonstration_guard.py # Unit tests for shadow few-shot demonstration guard
 │   ├── test_egress_domain_allowlist_guard.py # Unit tests for agent egress domain allowlist guard
@@ -230,12 +238,14 @@ sequenceDiagram
 │   ├── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
 │   ├── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
 │   ├── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
-│   └── test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
+│   ├── test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
+│   └── test_pipeline_v28.py           # Integration tests for v2.8.0 capability and RAG poison defenses
 ├── docs/
 │   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise architecture for zero-trust autonomous agent governance
 │   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Agentic AI Top 10 threat model & proxy defense mapping
 │   ├── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous multi-agent zero-trust governance specification
-│   └── EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
+│   ├── EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
+│   └── CAPABILITY_SCOPING_AND_RAG_DEFENSE.md # Autonomous capability scoping and RAG poison defense matrix
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -418,7 +428,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 160 adversarial payloads across 11 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 175 adversarial payloads across 12 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -430,9 +440,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-26 UTC
+Timestamp: 2026-09-27 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15) = 160 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15) = 175 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -448,6 +458,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Memory, Exfil & Param Enforce  | 15       | 15       |  100.0% Block Rate   |
 | RBAC, Bidi & Context Bombs     | 15       | 15       |  100.0% Block Rate   |
 | Shadow Demo, Egress & ReDoS    | 15       | 15       |  100.0% Block Rate   |
+| RAG Poison, Zip Bomb & Scope   | 15       | 15       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
@@ -456,7 +467,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           | 100.00%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 160                          |
+| Total Adversarial Test Cases Executed         | 175                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
