@@ -203,6 +203,34 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable fuzzy canary reflection attenuation guard"
     )
+    ENABLE_CAPABILITY_TOKEN_GUARD: bool = Field(
+        default=False,
+        description="Enable agent tool ephemeral capability token scoping guard"
+    )
+    ENABLE_RAG_POISON_GUARD: bool = Field(
+        default=True,
+        description="Enable indirect RAG document poison and canary extraction guard"
+    )
+    ENABLE_DECOMPRESSION_BOMB_GUARD: bool = Field(
+        default=True,
+        description="Enable prompt decompression bomb and zlib zip-slip guard"
+    )
+    ENABLE_SEMANTIC_SIMILARITY_GUARD: bool = Field(
+        default=True,
+        description="Enable semantic similarity evasion and paraphrased jailbreak guard"
+    )
+    ENABLE_PARAM_DIFFERENTIAL_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool parameter semantic differential validator"
+    )
+    ENABLE_AGENT_ATTESTATION_GUARD: bool = Field(
+        default=False,
+        description="Enable cryptographic agent hardware/software attestation guard"
+    )
+    ENABLE_STATE_ROLLBACK_GUARD: bool = Field(
+        default=True,
+        description="Enable speculative execution rollback and state undo ledger"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"

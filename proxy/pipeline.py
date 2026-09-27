@@ -50,6 +50,13 @@ from proxy.guards.egress_domain_allowlist_guard import EgressDomainAllowlistGuar
 from proxy.guards.param_redos_guard import ParamReDoSGuard
 from proxy.guards.session_replay_guard import SessionAntiReplayGuard
 from proxy.guards.epistemic_uncertainty_guard import EpistemicUncertaintyGuard
+from proxy.guards.capability_token_guard import CapabilityTokenGuard
+from proxy.guards.rag_poison_guard import RAGPoisonGuard
+from proxy.guards.decompression_bomb_guard import DecompressionBombGuard
+from proxy.guards.semantic_similarity_guard import SemanticSimilarityGuard
+from proxy.guards.param_differential_guard import ParamDifferentialGuard
+from proxy.guards.agent_attestation_guard import AgentAttestationGuard
+from proxy.guards.state_rollback_guard import StateRollbackGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -132,6 +139,13 @@ class SecurityPipeline:
         self.session_replay_guard = SessionAntiReplayGuard()
         self.epistemic_guard = EpistemicUncertaintyGuard()
         self.canary_attenuation_guard = CanaryReflectionAttenuationGuard(canary_tokens=[self.settings.CANARY_TOKEN])
+        self.capability_token_guard = CapabilityTokenGuard(enforce_capability_tokens=self.settings.ENABLE_CAPABILITY_TOKEN_GUARD)
+        self.rag_poison_guard = RAGPoisonGuard()
+        self.decompression_bomb_guard = DecompressionBombGuard()
+        self.semantic_similarity_guard = SemanticSimilarityGuard()
+        self.param_differential_guard = ParamDifferentialGuard()
+        self.agent_attestation_guard = AgentAttestationGuard(enforce_attestation=self.settings.ENABLE_AGENT_ATTESTATION_GUARD)
+        self.state_rollback_guard = StateRollbackGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -851,6 +865,65 @@ class SecurityPipeline:
                         context=context
                     )
 
+            # 2c. Semantic Similarity Evasion & Paraphrased Jailbreak Guard
+            if self.settings.ENABLE_SEMANTIC_SIMILARITY_GUARD and text_to_check:
+                sim_res = self.semantic_similarity_guard.inspect_text(text_to_check)
+                if sim_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="semantic_similarity_guard",
+                        violation_code=sim_res.violation_code or "semantic_similarity_jailbreak_detected",
+                        details=sim_res.details,
+                        metadata={"similarity_score": sim_res.similarity_score, "matched_intent": sim_res.matched_intent, "message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": sim_res.violation_code or "semantic_similarity_jailbreak_detected",
+                                "message": f"Inbound prompt blocked by Semantic Similarity Guard: {sim_res.details}",
+                                "guard": "semantic_similarity_guard",
+                                "similarity_score": sim_res.similarity_score,
+                            }
+                        },
+                        context=context
+                    )
+
+            # 2d. Indirect RAG Document Poison & Canary Extraction Guard
+            if self.settings.ENABLE_RAG_POISON_GUARD and text_to_check:
+                rag_res = self.rag_poison_guard.inspect_text(text_to_check)
+                if rag_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="rag_poison_guard",
+                        violation_code=rag_res.violation_code or "indirect_rag_poison_detected",
+                        details=rag_res.details,
+                        metadata={"poison_type": rag_res.poison_type, "message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": rag_res.violation_code or "indirect_rag_poison_detected",
+                                "message": f"Inbound prompt blocked by RAG Poison Guard: {rag_res.details}",
+                                "guard": "rag_poison_guard",
+                            }
+                        },
+                        context=context
+                    )
+
             # 3. System Prompt Extraction Guard
             if self.settings.ENABLE_SYSTEM_PROMPT_GUARD and text_to_check:
                 sys_res = self.system_prompt_guard.inspect_prompt(text_to_check)
@@ -1389,6 +1462,133 @@ class SecurityPipeline:
                                     "code": redos_res.violation_code or "catastrophic_redos_signature",
                                     "message": f"Inbound tool call blocked by Parameter ReDoS Guard: {redos_res.details}",
                                     "guard": "param_redos_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
+        # 4k. Decompression Bomb & Zip-Slip Guard
+        if self.settings.ENABLE_DECOMPRESSION_BOMB_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    decomp_res = self.decompression_bomb_guard.inspect_tool_call(t_name, t_args)
+                    if decomp_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="decompression_bomb_guard",
+                            violation_code=decomp_res.violation_code or "decompression_bomb_detected",
+                            details=decomp_res.details,
+                            metadata={"tool_name": t_name, "compression_ratio": decomp_res.compression_ratio}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": decomp_res.violation_code or "decompression_bomb_detected",
+                                    "message": f"Inbound tool call blocked by Decompression Bomb Guard: {decomp_res.details}",
+                                    "guard": "decompression_bomb_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
+        # 4l. Parameter Semantic Differential Validator
+        if self.settings.ENABLE_PARAM_DIFFERENTIAL_GUARD and inbound_tool_calls:
+            user_prompt = ""
+            for m in messages:
+                if isinstance(m, dict) and m.get("role") == "user":
+                    user_prompt = m.get("content", "")
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    diff_res = self.param_differential_guard.inspect_differential(user_prompt, t_name, t_args)
+                    if diff_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="param_differential_guard",
+                            violation_code=diff_res.violation_code or "unprompted_destructive_tool_invocation",
+                            details=diff_res.details,
+                            metadata={"tool_name": t_name, "divergence_score": diff_res.divergence_score}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": diff_res.violation_code or "unprompted_destructive_tool_invocation",
+                                    "message": f"Inbound tool call blocked by Param Differential Guard: {diff_res.details}",
+                                    "guard": "param_differential_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
+        # 4m. Ephemeral Capability Token Scoping Guard
+        if self.settings.ENABLE_CAPABILITY_TOKEN_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    cap_res = self.capability_token_guard.inspect_tool_call(t_name, t_args)
+                    if cap_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="capability_token_guard",
+                            violation_code=cap_res.violation_code or "missing_capability_token",
+                            details=cap_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": cap_res.violation_code or "missing_capability_token",
+                                    "message": f"Inbound tool call blocked by Capability Token Guard: {cap_res.details}",
+                                    "guard": "capability_token_guard",
                                     "tool": t_name,
                                 }
                             },
