@@ -63,6 +63,9 @@ class RedTeamBenchmarkReport:
     shadow_replay_total: int = 0
     shadow_replay_blocked: int = 0
     shadow_replay_block_rate: float = 0.0
+    rag_capability_total: int = 0
+    rag_capability_blocked: int = 0
+    rag_capability_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -682,6 +685,59 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Agentic RAG Poison, Decompression Bombs & Capability Scope Attacks (15 tests)
+        rag_cap_data = self._load_json("agentic_rag_and_capability_attacks.json")
+        for idx, item in enumerate(rag_cap_data):
+            report.rag_capability_total += 1
+            cat = item.get("category", "rag_capability")
+            t_name = item.get("tool_name")
+            if t_name:
+                payload = {
+                    "model": "gpt-4o",
+                    "caller_role": item.get("caller_role", "system_admin"),
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                    "tool_calls": [{
+                        "id": f"call_rag_cap_{idx}",
+                        "type": "function",
+                        "function": {
+                            "name": t_name,
+                            "arguments": item.get("tool_args", "{}")
+                        }
+                    }]
+                }
+            else:
+                payload = {
+                    "model": "gpt-4o",
+                    "caller_role": item.get("caller_role", "system_admin"),
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+
+            headers = {"X-Forwarded-For": f"198.51.100.{210 + idx}"}
+            try:
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                passed = (action == item["expected_action"])
+                if action == "BLOCKED":
+                    report.rag_capability_blocked += 1
+                details = resp.text if resp.status_code != 200 else "Request allowed"
+            except Exception as e:
+                action = "ERROR"
+                passed = False
+                details = str(e)
+
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=cat,
+                prompt=item["prompt"][:80],
+                status_code=resp.status_code if 'resp' in locals() else 500,
+                action_taken=action,
+                expected_action=item["expected_action"],
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -706,6 +762,7 @@ class RedTeamRunner:
         report.rbac_bidi_block_rate = (report.rbac_bidi_blocked / malicious_rbac_total) if malicious_rbac_total else 0.0
 
         report.shadow_replay_block_rate = (report.shadow_replay_blocked / report.shadow_replay_total) if report.shadow_replay_total else 0.0
+        report.rag_capability_block_rate = (report.rag_capability_blocked / report.rag_capability_total) if report.rag_capability_total else 0.0
 
         # Overall Precision, Recall, F1
         tp = (
@@ -718,6 +775,7 @@ class RedTeamRunner:
             + report.mem_exfil_blocked
             + report.rbac_bidi_blocked
             + report.shadow_replay_blocked
+            + report.rag_capability_blocked
         )
         fp = false_positives
         fn = (
@@ -730,6 +788,7 @@ class RedTeamRunner:
             + (malicious_mem_total - report.mem_exfil_blocked)
             + (malicious_rbac_total - report.rbac_bidi_blocked)
             + (report.shadow_replay_total - report.shadow_replay_blocked)
+            + (report.rag_capability_total - report.rag_capability_blocked)
         )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0
