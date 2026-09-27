@@ -110,6 +110,15 @@ class AuditLogger:
         """Record PII redaction metrics."""
         PROMETHEUS_PII_REDACTIONS.labels(entity_type=entity_type).inc(count)
 
+    def record_capability_event(self, agent_id: str, tool_name: str, granted: bool):
+        """Record telemetry for agent capability token delegation."""
+        status = "GRANTED" if granted else "DENIED"
+        self.logger.info(f"CAPABILITY TELEMETRY: Agent '{agent_id}' tool '{tool_name}' delegation {status}")
+
+    def record_decompression_event(self, compression_ratio: float, decompressed_bytes: int):
+        """Record telemetry for archive expansion inspections."""
+        self.logger.info(f"ARCHIVE TELEMETRY: Decompression ratio {compression_ratio:.1f}:1, bytes {decompressed_bytes}")
+
     def get_prometheus_metrics(self) -> bytes:
         """Export latest prometheus metrics."""
         return generate_latest()
