@@ -5,6 +5,19 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-09-28
+
+### Added
+- **Autonomous Agent Feedback Loop Dampener Guard (`feedback_loop_guard.py`)**: Intercepts multi-agent resonance amplification, runaway prompt oscillation, and recursive echo cascades with turn similarity tracking and adaptive dampening thresholds.
+- **Token Frequency Entropy & Repetition Suppression Guard (`token_entropy_guard.py`)**: Computes Shannon informational entropy across unigrams and bigrams, blocking low-entropy context stuffing and token degeneration DoS payloads.
+- **Multi-Agent Capability Lease & Expiration Guard (`capability_lease_guard.py`)**: Manages cryptographically signed, ephemeral, usage-capped capability leases for delegated autonomous subagent tool execution.
+- **Prompt Payload Obfuscation & Zero-Width Evasion Guard (`obfuscation_evasion_guard.py`)**: Detects and strips invisible Unicode characters, bidirectional markers, and stealth control sequence injections.
+- **Adversarial Benchmark Expansion to 200 Test Cases**: Expanded adversarial benchmark evaluation suite to 200 comprehensive tests across 13 security categories, sustaining a **100.0% test pass rate, 99.42% attack recall, and 100.0% benign precision (F1 = 0.9971)**.
+
+### Changed
+- Integrated feedback loop dampening, token entropy validation, capability leasing, and obfuscation evasion into `SecurityPipeline` inbound inspection pipeline.
+- Expanded unit and integration test suite to **459 passing tests**.
+
 ## [2.9.0] - 2026-09-28
 
 ### Added

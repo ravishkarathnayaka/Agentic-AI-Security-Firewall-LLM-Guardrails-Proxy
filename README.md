@@ -442,9 +442,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-27 UTC
+Timestamp: 2026-09-28 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15) = 175 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (22) = 200 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -461,16 +461,16 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | RBAC, Bidi & Context Bombs     | 15       | 15       |  100.0% Block Rate   |
 | Shadow Demo, Egress & ReDoS    | 15       | 15       |  100.0% Block Rate   |
 | RAG Poison, Zip Bomb & Scope   | 15       | 15       |  100.0% Block Rate   |
-| Cost Quota, Mutation & Isol    | 15       | 15       |  100.0% Block Rate   |
+| Cost Quota, Mutation & Isol    | 25       | 25       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
 | GLOBAL CLASSIFICATION METRIC                  | SCORE                        |
 +------------------------------------------------------------------------------+
-| Security Attack Block Rate (Recall)           | 100.00%                     |
+| Security Attack Block Rate (Recall)           |  99.42%                     |
 | Benign Query Precision                        | 100.00%                     |
-| Harmonic Mean (F1 Score)                      | 1.0000                      |
-| Total Adversarial Test Cases Executed         | 190                          |
+| Harmonic Mean (F1 Score)                      | 0.9971                      |
+| Total Adversarial Test Cases Executed         | 200                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
