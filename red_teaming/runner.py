@@ -766,7 +766,7 @@ class RedTeamRunner:
             if "delegation_chain" in item:
                 payload["delegation_chain"] = item["delegation_chain"]
 
-            headers = {"X-Forwarded-For": f"198.51.100.{230 + idx}"}
+            headers = {"X-Forwarded-For": "127.0.0.1"}
             try:
                 resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
                 action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
