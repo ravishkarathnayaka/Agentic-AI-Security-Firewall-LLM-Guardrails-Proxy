@@ -66,6 +66,9 @@ class RedTeamBenchmarkReport:
     rag_capability_total: int = 0
     rag_capability_blocked: int = 0
     rag_capability_block_rate: float = 0.0
+    cost_isolation_total: int = 0
+    cost_isolation_blocked: int = 0
+    cost_isolation_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -738,6 +741,57 @@ class RedTeamRunner:
             )
             report.test_results.append(res)
 
+        # Cost Quota, Mutation & Multi-Tenant Isolation Attacks (15 test cases)
+        cost_iso_data = self._load_json("agentic_cost_quota_and_isolation_attacks.json")
+        for idx, item in enumerate(cost_iso_data):
+            report.cost_isolation_total += 1
+            cat = item.get("category", "cost_quota_and_isolation")
+
+            # Pre-exhaust session budget for financial exhaustion test cases
+            if item.get("session_id", "").startswith("budget_exhaustion"):
+                from proxy.main import pipeline as proxy_pipeline
+                proxy_pipeline.cost_quota_guard.record_usage(session_id=item["session_id"], additional_cost_usd=5.0)
+
+            payload = {
+                "model": "gpt-4o",
+                "caller_role": "agent_worker",
+                "messages": [{"role": "user", "content": item["prompt"]}],
+            }
+            if "session_id" in item:
+                payload["session_id"] = item["session_id"]
+            if "tenant_id" in item:
+                payload["tenant_id"] = item["tenant_id"]
+            if "requested_zone" in item:
+                payload["requested_zone"] = item["requested_zone"]
+            if "delegation_chain" in item:
+                payload["delegation_chain"] = item["delegation_chain"]
+
+            headers = {"X-Forwarded-For": f"198.51.100.{230 + idx}"}
+            try:
+                resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                passed = (action == item["expected_action"])
+                if action == "BLOCKED":
+                    report.cost_isolation_blocked += 1
+                details = resp.text if resp.status_code != 200 else "Request allowed"
+            except Exception as e:
+                action = "ERROR"
+                passed = False
+                details = str(e)
+
+            res = TestCaseResult(
+                test_id=item["id"],
+                name=item["name"],
+                category=cat,
+                prompt=item["prompt"][:80],
+                status_code=resp.status_code if 'resp' in locals() else 500,
+                action_taken=action,
+                expected_action=item["expected_action"],
+                passed=passed,
+                details=details
+            )
+            report.test_results.append(res)
+
         await client.aclose()
 
         # Compute benchmark metrics
@@ -763,6 +817,7 @@ class RedTeamRunner:
 
         report.shadow_replay_block_rate = (report.shadow_replay_blocked / report.shadow_replay_total) if report.shadow_replay_total else 0.0
         report.rag_capability_block_rate = (report.rag_capability_blocked / report.rag_capability_total) if report.rag_capability_total else 0.0
+        report.cost_isolation_block_rate = (report.cost_isolation_blocked / report.cost_isolation_total) if report.cost_isolation_total else 0.0
 
         # Overall Precision, Recall, F1
         tp = (
@@ -776,6 +831,7 @@ class RedTeamRunner:
             + report.rbac_bidi_blocked
             + report.shadow_replay_blocked
             + report.rag_capability_blocked
+            + report.cost_isolation_blocked
         )
         fp = false_positives
         fn = (
@@ -789,6 +845,7 @@ class RedTeamRunner:
             + (malicious_rbac_total - report.rbac_bidi_blocked)
             + (report.shadow_replay_total - report.shadow_replay_blocked)
             + (report.rag_capability_total - report.rag_capability_blocked)
+            + (report.cost_isolation_total - report.cost_isolation_blocked)
         )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0

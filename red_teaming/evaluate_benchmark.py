@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15) = 175 Tests\n")
+    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (15) = 190 Tests\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -58,6 +58,8 @@ async def run_evaluation():
     print(f"| {'Shadow Demo, Egress & ReDoS':<30} | {report.shadow_replay_total:<8} | {shadow_passed:<8} | {report.shadow_replay_block_rate * 100:>6.1f}% Block Rate   |")
     rag_cap_passed = sum(1 for t in report.test_results if t.category == "rag_capability" and t.passed)
     print(f"| {'RAG Poison, Zip Bomb & Scope':<30} | {report.rag_capability_total:<8} | {rag_cap_passed:<8} | {report.rag_capability_block_rate * 100:>6.1f}% Block Rate   |")
+    cost_iso_passed = sum(1 for t in report.test_results if t.category == "cost_quota_and_isolation" and t.passed)
+    print(f"| {'Cost Quota, Mutation & Isol':<30} | {report.cost_isolation_total:<8} | {cost_iso_passed:<8} | {report.cost_isolation_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics
