@@ -114,3 +114,6 @@ class MutationFuzzGuard:
             denoised_text=denoised_full,
             perturbation_score=round(perturbation_ratio, 3)
         )
+
+    inspect = inspect_text
+    inspect_prompt = inspect_text

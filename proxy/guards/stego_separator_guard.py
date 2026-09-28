@@ -93,3 +93,5 @@ class StegoSeparatorGuard:
             )
 
         return StegoSeparatorResult(is_blocked=False, covert_chars_count=total_covert)
+
+    inspect = inspect_text

@@ -231,6 +231,34 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable speculative execution rollback and state undo ledger"
     )
+    ENABLE_COST_QUOTA_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool call rate and cost quota limiter guard"
+    )
+    ENABLE_MUTATION_FUZZ_GUARD: bool = Field(
+        default=True,
+        description="Enable adaptive prompt mutation and fuzzing evasion detector"
+    )
+    ENABLE_TENANT_ISOLATION_GUARD: bool = Field(
+        default=True,
+        description="Enable multi-tenant workspace and virtual security zone guard"
+    )
+    ENABLE_DELEGATION_DEPTH_GUARD: bool = Field(
+        default=True,
+        description="Enable recursive subagent delegation depth ceiling guard"
+    )
+    ENABLE_STEGO_SEPARATOR_GUARD: bool = Field(
+        default=True,
+        description="Enable steganographic separator and covert exfiltration guard"
+    )
+    ENABLE_SCHEMA_MUTATION_GUARD: bool = Field(
+        default=True,
+        description="Enable tool argument json schema mutation and prototype hijack guard"
+    )
+    ENABLE_PROOF_OF_EXECUTION_GUARD: bool = Field(
+        default=False,
+        description="Enable cryptographic proof-of-execution receipt guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"

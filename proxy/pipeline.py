@@ -57,6 +57,13 @@ from proxy.guards.semantic_similarity_guard import SemanticSimilarityGuard
 from proxy.guards.param_differential_guard import ParamDifferentialGuard
 from proxy.guards.agent_attestation_guard import AgentAttestationGuard
 from proxy.guards.state_rollback_guard import StateRollbackGuard
+from proxy.guards.cost_quota_guard import CostQuotaGuard
+from proxy.guards.mutation_fuzz_guard import MutationFuzzGuard
+from proxy.guards.tenant_isolation_guard import TenantIsolationGuard
+from proxy.guards.delegation_depth_guard import DelegationDepthGuard
+from proxy.guards.stego_separator_guard import StegoSeparatorGuard
+from proxy.guards.schema_mutation_guard import SchemaMutationGuard
+from proxy.guards.proof_of_execution_guard import ProofOfExecutionGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -146,6 +153,13 @@ class SecurityPipeline:
         self.param_differential_guard = ParamDifferentialGuard()
         self.agent_attestation_guard = AgentAttestationGuard(enforce_attestation=self.settings.ENABLE_AGENT_ATTESTATION_GUARD)
         self.state_rollback_guard = StateRollbackGuard()
+        self.cost_quota_guard = CostQuotaGuard(enforce_quotas=self.settings.ENABLE_COST_QUOTA_GUARD)
+        self.mutation_fuzz_guard = MutationFuzzGuard(block_on_mutation=self.settings.ENABLE_MUTATION_FUZZ_GUARD)
+        self.tenant_isolation_guard = TenantIsolationGuard(enforce_isolation=self.settings.ENABLE_TENANT_ISOLATION_GUARD)
+        self.delegation_depth_guard = DelegationDepthGuard(block_on_breach=self.settings.ENABLE_DELEGATION_DEPTH_GUARD)
+        self.stego_separator_guard = StegoSeparatorGuard(block_on_covert_data=self.settings.ENABLE_STEGO_SEPARATOR_GUARD)
+        self.schema_mutation_guard = SchemaMutationGuard(enabled=self.settings.ENABLE_SCHEMA_MUTATION_GUARD)
+        self.proof_of_execution_guard = ProofOfExecutionGuard(enabled=self.settings.ENABLE_PROOF_OF_EXECUTION_GUARD)
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -214,6 +228,105 @@ class SecurityPipeline:
                             "message": f"Too Many Requests: {rate_res.details}",
                             "guard": "rate_limiter",
                             "retry_after": rate_res.retry_after_seconds,
+                        }
+                    },
+                    context=context
+                )
+
+        # 0b. Agent Subagent Delegation Depth Ceiling Guard
+        if self.settings.ENABLE_DELEGATION_DEPTH_GUARD and ("delegation_chain" in payload or "delegation_depth" in payload):
+            chain = payload.get("delegation_chain")
+            if chain is None and "delegation_depth" in payload:
+                chain = [f"agent_{i}" for i in range(payload["delegation_depth"])]
+            if chain:
+                del_res = self.delegation_depth_guard.inspect_chain(chain)
+                if del_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="delegation_depth_guard",
+                        violation_code=del_res.violation_code or "delegation_depth_exceeded",
+                        details=del_res.details,
+                        metadata={"depth": del_res.current_depth, "max_depth": del_res.max_depth}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": del_res.violation_code or "delegation_depth_exceeded",
+                                "message": f"Inbound delegation blocked by Delegation Depth Guard: {del_res.details}",
+                                "guard": "delegation_depth_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+        # 0c. Multi-Tenant Workspace & Security Zone Guard
+        if self.settings.ENABLE_TENANT_ISOLATION_GUARD and ("tenant_id" in payload or "target_workspace" in payload or "requested_zone" in payload):
+            caller_tenant = payload.get("tenant_id") or payload.get("tenant") or "default"
+            target_zone = payload.get("requested_zone") or payload.get("target_workspace") or payload.get("workspace_id")
+            if target_zone:
+                t_res = self.tenant_isolation_guard.validate_zone_access(caller_tenant, target_zone)
+                if t_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="tenant_isolation_guard",
+                        violation_code=t_res.violation_code or "cross_tenant_access_denied",
+                        details=t_res.details,
+                        metadata={"caller_tenant": caller_tenant, "target_zone": target_zone}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": t_res.violation_code or "cross_tenant_access_denied",
+                                "message": f"Inbound access blocked by Tenant Isolation Guard: {t_res.details}",
+                                "guard": "tenant_isolation_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+        # 0d. Agent Cost Quota & Tool Rate Limiter Guard
+        if self.settings.ENABLE_COST_QUOTA_GUARD and ("agent_id" in payload or "session_id" in payload):
+            session_id = payload.get("session_id") or payload.get("agent_id") or client_ip or "default_session"
+            sample_prompt = ""
+            for m in payload.get("messages", []):
+                if isinstance(m, dict) and isinstance(m.get("content"), str):
+                    sample_prompt += m.get("content") + " "
+            cq_res = self.cost_quota_guard.check_inbound_budget(session_id, sample_prompt)
+            if cq_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="cost_quota_guard",
+                    violation_code=cq_res.violation_code or "session_budget_exceeded",
+                    details=cq_res.details,
+                    metadata={"session_id": session_id}
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": cq_res.violation_code or "session_budget_exceeded",
+                            "message": f"Inbound request blocked by Cost Quota Guard: {cq_res.details}",
+                            "guard": "cost_quota_guard",
                         }
                     },
                     context=context
@@ -1041,6 +1154,64 @@ class SecurityPipeline:
                         context=context
                     )
 
+            # 3d. Steganographic Separator & Covert Exfiltration Guard
+            if self.settings.ENABLE_STEGO_SEPARATOR_GUARD and text_to_check:
+                stego_res = self.stego_separator_guard.inspect_text(text_to_check)
+                if stego_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="stego_separator_guard",
+                        violation_code=stego_res.violation_code or "steganographic_separator_detected",
+                        details=stego_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": stego_res.violation_code or "steganographic_separator_detected",
+                                "message": f"Inbound prompt blocked by Stego Separator Guard: {stego_res.details}",
+                                "guard": "stego_separator_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3e. Adaptive Prompt Mutation & Fuzzing Evasion Guard
+            if self.settings.ENABLE_MUTATION_FUZZ_GUARD and text_to_check:
+                mut_res = self.mutation_fuzz_guard.inspect_text(text_to_check)
+                if mut_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="mutation_fuzz_guard",
+                        violation_code=mut_res.violation_code or "prompt_mutation_fuzz_detected",
+                        details=mut_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": mut_res.violation_code or "prompt_mutation_fuzz_detected",
+                                "message": f"Inbound prompt blocked by Mutation Fuzz Guard: {mut_res.details}",
+                                "guard": "mutation_fuzz_guard",
+                            }
+                        },
+                        context=context
+                    )
+
             # Reconstruct message with sanitized content
             new_msg = dict(msg)
             if isinstance(content, str):
@@ -1589,6 +1760,47 @@ class SecurityPipeline:
                                     "code": cap_res.violation_code or "missing_capability_token",
                                     "message": f"Inbound tool call blocked by Capability Token Guard: {cap_res.details}",
                                     "guard": "capability_token_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
+        # 4n. Inbound Tool Call Schema Mutation & Prototype Hijack Guard
+        if self.settings.ENABLE_SCHEMA_MUTATION_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                if isinstance(t_args, str):
+                    try:
+                        import json
+                        t_args = json.loads(t_args)
+                    except Exception:
+                        t_args = {}
+                if isinstance(t_args, dict):
+                    sm_ok, sm_err = self.schema_mutation_guard.validate_tool_arguments(t_name, t_args)
+                    if not sm_ok:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="schema_mutation_guard",
+                            violation_code="schema_mutation_prototype_hijack",
+                            details=sm_err,
+                            metadata={"tool_name": t_name}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": "schema_mutation_prototype_hijack",
+                                    "message": f"Inbound tool call blocked by Schema Mutation Guard: {sm_err}",
+                                    "guard": "schema_mutation_guard",
                                     "tool": t_name,
                                 }
                             },
