@@ -70,6 +70,8 @@ class TenantIsolationGuard:
             target_tenant=requested_zone
         )
 
+    validate_zone_access = inspect_request_metadata
+
     def inspect_tool_call(
         self,
         caller_tenant: str,
