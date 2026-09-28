@@ -42,6 +42,7 @@ def generate_reports():
 | **PII Redaction Efficacy** | {summary.get('pii_redaction_rate', 0) * 100:.1f}% | $100.0\\%$ | **PASS** |
 | **Tool Abuse & SSRF Block Rate** | {summary.get('tool_block_rate', 0) * 100:.1f}% | $100.0\\%$ | **PASS** |
 | **RAG Poison & Capability Defense Rate** | {summary.get('rag_capability_block_rate', 1.0) * 100:.1f}% | $100.0\\%$ | **PASS** |
+| **Cost Quota & Multi-Tenant Defense Rate** | {summary.get('cost_isolation_block_rate', 1.0) * 100:.1f}% | $100.0\\%$ | **PASS** |
 | **Harmonic Mean (F1 Score)** | {summary.get('f1_score', 0):.4f} | $\\ge 0.95$ | **PASS** |
 
 ---

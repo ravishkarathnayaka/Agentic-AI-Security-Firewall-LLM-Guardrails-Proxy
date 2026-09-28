@@ -119,6 +119,16 @@ class AuditLogger:
         """Record telemetry for archive expansion inspections."""
         self.logger.info(f"ARCHIVE TELEMETRY: Decompression ratio {compression_ratio:.1f}:1, bytes {decompressed_bytes}")
 
+    def record_cost_quota_event(self, session_id: str, cost_usd: float, quota_exceeded: bool):
+        """Record telemetry for session cost and token expenditure."""
+        status = "EXCEEDED" if quota_exceeded else "TRACKED"
+        self.logger.info(f"COST TELEMETRY: Session '{session_id}' cost ${cost_usd:.4f} USD status {status}")
+
+    def record_tenant_event(self, source_tenant: str, target_zone: str, authorized: bool):
+        """Record telemetry for multi-tenant security zone traversal."""
+        status = "AUTHORIZED" if authorized else "DENIED"
+        self.logger.info(f"TENANT TELEMETRY: Tenant '{source_tenant}' access to zone '{target_zone}' {status}")
+
     def get_prometheus_metrics(self) -> bytes:
         """Export latest prometheus metrics."""
         return generate_latest()
