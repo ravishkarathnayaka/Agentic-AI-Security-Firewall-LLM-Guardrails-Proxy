@@ -47,8 +47,8 @@ class MutationFuzzGuard:
         return denoised
 
     def _denoise_char_stutter(self, text: str) -> str:
-        """Collapses 3+ repeated characters (e.g. iiiggnooorreee -> ignore)."""
-        return re.sub(r"(.)\1{2,}", r"\1", text)
+        """Collapses duplicate repeated characters (e.g. iiiggnooorreee -> ignore)."""
+        return re.sub(r"([a-zA-Z])\1+", r"\1", text)
 
     def _calculate_char_entropy(self, text: str) -> float:
         """Computes Shannon entropy of character distribution."""
@@ -84,6 +84,7 @@ class MutationFuzzGuard:
         # Calculate perturbation ratio
         diff_len = abs(len(text) - len(denoised_full))
         perturbation_ratio = diff_len / max(1, len(text))
+        non_alnum_ratio = len(re.findall(r"[^a-zA-Z0-9\s]", text)) / max(1, len(text))
 
         # Condition 1: Symbol interleaving or stuttering reveals critical injection payload
         if (sym_changed or stutter_changed) and len(revealed_keywords) >= 2:
@@ -96,16 +97,16 @@ class MutationFuzzGuard:
                 details=f"Adversarial mutation detected: normalized '{denoised_full[:60]}' reveals keywords {revealed_keywords}."
             )
 
-        # Condition 2: Extreme perturbation ratio with high entropy (random adversarial noise)
+        # Condition 2: Extreme perturbation ratio or non-alphanumeric noise with high entropy
         entropy = self._calculate_char_entropy(text)
-        if perturbation_ratio > self.max_perturbation_threshold and entropy > 4.5:
+        if (perturbation_ratio > self.max_perturbation_threshold or non_alnum_ratio > 0.35) and entropy > 4.0:
             return MutationFuzzResult(
                 is_blocked=self.block_on_mutation,
                 violation_code="high_entropy_fuzzing_noise",
                 mutation_type="adversarial_noise_flooding",
                 denoised_text=denoised_full,
-                perturbation_score=round(perturbation_ratio, 3),
-                details=f"High-entropy adversarial fuzzing noise detected (perturbation ratio {perturbation_ratio:.2f}, entropy {entropy:.2f})."
+                perturbation_score=round(max(perturbation_ratio, non_alnum_ratio), 3),
+                details=f"High-entropy adversarial fuzzing noise detected (noise ratio {max(perturbation_ratio, non_alnum_ratio):.2f}, entropy {entropy:.2f})."
             )
 
         return MutationFuzzResult(
