@@ -5,6 +5,24 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-09-28
+
+### Added
+- **Agent Cost Quota & Tool Rate Limiter Guard (`cost_quota_guard.py`)**: Enforces real-time session financial ceilings ($2.50 USD default) and sliding-window token allocations ($0.003/1k tokens) against runaway tool execution loops and "Denial-of-Wallet" attacks.
+- **Adaptive Prompt Mutation & Fuzzing Evasion Detector (`mutation_fuzz_guard.py`)**: Neutralizes character-level adversarial perturbations, symbol interleaving (e.g., `i.g.n.o.r.e`), and character stuttering before inspection, paired with Shannon entropy noise analysis.
+- **Multi-Tenant Workspace & Security Zone Guard (`tenant_isolation_guard.py`)**: Enforces strict boundary isolation across departmental workspaces (Finance, Engineering, HR) and blocks cross-tenant security zone escalation.
+- **Subagent Delegation Depth & Acyclic Ceiling Guard (`delegation_depth_guard.py`)**: Guarantees acyclic delegation graphs and limits recursive subagent delegation depth (max 3 hops), preventing runaway task spawning.
+- **Steganographic Separator & Covert Exfiltration Guard (`stego_separator_guard.py`)**: Detects and strips invisible Unicode Variation Selectors (`U+FE00`–`U+FE0F`) and zero-width covert communication channels.
+- **Tool Argument JSON Schema Mutation Guard (`schema_mutation_guard.py`)**: Blocks prototype pollution (`__proto__`, `constructor`), parameter smuggling, and type confusion attacks in dynamic tool invocations.
+- **Cryptographic Proof-of-Execution Receipt Guard (`proof_of_execution_guard.py`)**: Generates tamper-evident HMAC-SHA256 non-repudiation tokens for sensitive downstream actions with nonce replay caching.
+- **Cost Quota & Multi-Tenant Isolation Architecture Specification (`docs/COST_QUOTA_AND_TENANT_ISOLATION.md`)**: Comprehensive architectural guide covering resource envelopes, Zero-Trust isolation, and formal Mermaid flow diagrams.
+- **Adversarial Benchmark Expansion to 190 Test Cases**: Added `agentic_cost_quota_and_isolation_attacks.json`, sustaining a **100.0% block rate, 0.0% FPR, and 1.0000 F1 score** across all 190 tests in 13 threat categories.
+- **Obsidian Amber Portal Simulator Enhancements**: Integrated Runaway Cost Quota Exhaustion, Mutation Fuzzing, Cross-Tenant Zone Contamination, Cyclic Delegation Loop, and Steganographic Exfiltration presets.
+
+### Changed
+- Integrated cost quota, mutation fuzzing, tenant isolation, delegation depth, and schema mutation guards into `SecurityPipeline` inbound message and tool processing stages.
+- Expanded automated unit and integration test suite to **410+ passing tests**.
+
 ## [2.8.0] - 2026-09-27
 
 ### Added
