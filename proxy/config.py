@@ -259,6 +259,22 @@ class ProxySettings(BaseSettings):
         default=False,
         description="Enable cryptographic proof-of-execution receipt guard"
     )
+    ENABLE_FEEDBACK_LOOP_GUARD: bool = Field(
+        default=True,
+        description="Enable autonomous agent feedback loop dampening guard"
+    )
+    ENABLE_TOKEN_ENTROPY_GUARD: bool = Field(
+        default=True,
+        description="Enable token frequency entropy and repetition suppression guard"
+    )
+    ENABLE_CAPABILITY_LEASE_GUARD: bool = Field(
+        default=False,
+        description="Enable multi-agent capability lease and expiration guard"
+    )
+    ENABLE_OBFUSCATION_EVASION_GUARD: bool = Field(
+        default=True,
+        description="Enable prompt payload obfuscation and zero-width evasion guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"

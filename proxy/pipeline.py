@@ -64,6 +64,10 @@ from proxy.guards.delegation_depth_guard import DelegationDepthGuard
 from proxy.guards.stego_separator_guard import StegoSeparatorGuard
 from proxy.guards.schema_mutation_guard import SchemaMutationGuard
 from proxy.guards.proof_of_execution_guard import ProofOfExecutionGuard
+from proxy.guards.feedback_loop_guard import FeedbackLoopGuard
+from proxy.guards.token_entropy_guard import TokenEntropyGuard
+from proxy.guards.capability_lease_guard import CapabilityLeaseGuard
+from proxy.guards.obfuscation_evasion_guard import ObfuscationEvasionGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -160,6 +164,10 @@ class SecurityPipeline:
         self.stego_separator_guard = StegoSeparatorGuard(block_on_covert_data=self.settings.ENABLE_STEGO_SEPARATOR_GUARD)
         self.schema_mutation_guard = SchemaMutationGuard(enabled=self.settings.ENABLE_SCHEMA_MUTATION_GUARD)
         self.proof_of_execution_guard = ProofOfExecutionGuard(enabled=self.settings.ENABLE_PROOF_OF_EXECUTION_GUARD)
+        self.feedback_loop_guard = FeedbackLoopGuard()
+        self.token_entropy_guard = TokenEntropyGuard()
+        self.capability_lease_guard = CapabilityLeaseGuard()
+        self.obfuscation_evasion_guard = ObfuscationEvasionGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -1207,6 +1215,96 @@ class SecurityPipeline:
                                 "code": mut_res.violation_code or "prompt_mutation_fuzz_detected",
                                 "message": f"Inbound prompt blocked by Mutation Fuzz Guard: {mut_res.details}",
                                 "guard": "mutation_fuzz_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3f. Obfuscation & Zero-Width Evasion Guard
+            if self.settings.ENABLE_OBFUSCATION_EVASION_GUARD and text_to_check:
+                obf_res = self.obfuscation_evasion_guard.inspect_text(text_to_check)
+                if obf_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="obfuscation_evasion_guard",
+                        violation_code=obf_res.violation_code or "zero_width_evasion_detected",
+                        details=obf_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": obf_res.violation_code or "zero_width_evasion_detected",
+                                "message": f"Inbound prompt blocked by Obfuscation Evasion Guard: {obf_res.details}",
+                                "guard": "obfuscation_evasion_guard",
+                            }
+                        },
+                        context=context
+                    )
+                text_to_check = obf_res.cleaned_text
+
+            # 3g. Token Frequency Entropy Guard
+            if self.settings.ENABLE_TOKEN_ENTROPY_GUARD and text_to_check:
+                ent_res = self.token_entropy_guard.inspect_text(text_to_check)
+                if ent_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="token_entropy_guard",
+                        violation_code=ent_res.violation_code or "low_entropy_token_stuffing",
+                        details=ent_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": ent_res.violation_code or "low_entropy_token_stuffing",
+                                "message": f"Inbound prompt blocked by Token Entropy Guard: {ent_res.details}",
+                                "guard": "token_entropy_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3h. Feedback Loop Dampening Guard
+            if self.settings.ENABLE_FEEDBACK_LOOP_GUARD and text_to_check and ("session_id" in payload or "agent_id" in payload):
+                sess_id = payload.get("session_id") or client_ip or "default_session"
+                snd_id = payload.get("agent_id") or "agent_turn"
+                fb_res = self.feedback_loop_guard.inspect_turn(sess_id, snd_id, text_to_check)
+                if fb_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="feedback_loop_guard",
+                        violation_code=fb_res.violation_code or "agent_feedback_resonance_loop",
+                        details=fb_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": fb_res.violation_code or "agent_feedback_resonance_loop",
+                                "message": f"Inbound prompt blocked by Feedback Loop Guard: {fb_res.details}",
+                                "guard": "feedback_loop_guard",
                             }
                         },
                         context=context
