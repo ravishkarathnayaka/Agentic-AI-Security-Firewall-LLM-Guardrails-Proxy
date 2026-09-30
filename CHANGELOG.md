@@ -5,6 +5,26 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-09-30
+
+### Added
+- **Autonomous Agent Plan Integrity Guard (`plan_integrity_guard.py`)**: Enforces structural Directed Acyclic Graph (DAG) validation on multi-step reasoning plans, preventing unauthorized goal replacement, unapproved destructive step insertion, and cyclic self-replication loops.
+- **Indirect Injection Semantic Boundary Guard (`semantic_boundary_guard.py`)**: Establishes cryptographic HMAC-SHA256 sealed boundary envelopes around untrusted external RAG data, neutralizing markdown breakouts, ChatML tags, and delimiter escape sequences.
+- **Cross-Context Contamination Guard (`cross_context_guard.py`)**: Enforces strict tenant and session boundary isolation, intercepting session bleeding, cross-tenant cache contamination, and inter-session identifier leaks.
+- **Model Inversion & Training Data Extraction Defense Guard (`model_inversion_guard.py`)**: Mitigates model inversion, membership inference queries, raw logit/entropy probing, loss gradient estimation, and verbatim training data extraction.
+- **Structured Output Schema Validator Guard (`schema_validator_guard.py`)**: Validates outbound JSON responses against declared JSON schemas to eliminate type confusion, field injection, and hallucinated schema drift.
+- **Agent Tool Egress Payload Sanitizer Guard (`egress_payload_sanitizer_guard.py`)**: Deep parameter inspection of outbound agent tool calls for sensitive credential leaks, AWS secret keys, JWTs, and private configuration variables prior to external transmission.
+- **Adaptive Rate Burst Governor Guard (`rate_burst_governor_guard.py`)**: Sliding-window token bucket rate governance with dynamic burst allowances and automated retry-after backoff calculation.
+- **Prompt Fingerprint Cache Guard (`prompt_fingerprint_guard.py`)**: Low-latency cryptographic SHA-256 fingerprint cache of known malicious vectors and authorized completions, accelerating repeat query evaluation while thwarting replay attacks.
+- **Agent Tool Argument Sanitizer Guard (`argument_sanitizer_guard.py`)**: Parameter-level sanitization enforcing character constraints, preventing command chaining, shell metacharacter injection, and traversal in tool arguments.
+- **Adversarial Benchmark Expansion to 230 Test Cases**: Added 4 new attack datasets (`agentic_plan_integrity_attacks.json`, `cross_context_contamination_attacks.json`, `model_inversion_attacks.json`, `semantic_boundary_attacks.json`), achieving a **100.0% overall pass rate (230/230), 99.50% attack recall, and 100.0% benign precision (F1 = 0.9975)**.
+- **Obsidian Amber Portal Showcase v3.0 Enhancements**: Added interactive presets for Agent Plan Integrity Hijack, Cross-Context Bleed & Poison, Model Inversion & Logit Probing, and Semantic Boundary Breakout.
+- **Architecture Specification**: Added `docs/AGENT_PLAN_INTEGRITY_AND_SEMANTIC_BOUNDARIES.md` detailing multi-agent reasoning verification, cryptographic envelope sealing, and pipeline interception topology.
+
+### Changed
+- Promoted enterprise proxy pipeline to **Major Release v3.0.0** with bidirectional execution interception and full proxy settings configuration.
+- Expanded comprehensive unit and integration test suite to **501 passing tests**.
+
 ## [2.9.1] - 2026-09-28
 
 ### Added
