@@ -73,6 +73,10 @@ from proxy.guards.plan_integrity_guard import AgentPlanIntegrityGuard
 from proxy.guards.cross_context_guard import CrossContextContaminationGuard
 from proxy.guards.model_inversion_guard import ModelInversionDefenseGuard
 from proxy.guards.semantic_boundary_guard import IndirectInjectionSemanticBoundaryGuard
+from proxy.guards.egress_payload_sanitizer_guard import AgentEgressPayloadSanitizerGuard
+from proxy.guards.rate_burst_governor_guard import AdaptiveRateBurstGovernorGuard
+from proxy.guards.prompt_fingerprint_guard import PromptFingerprintCacheGuard
+from proxy.guards.schema_validator_guard import StructuredOutputSchemaValidatorGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -178,6 +182,10 @@ class SecurityPipeline:
         self.cross_context_guard = CrossContextContaminationGuard()
         self.model_inversion_guard = ModelInversionDefenseGuard()
         self.semantic_boundary_guard = IndirectInjectionSemanticBoundaryGuard()
+        self.egress_sanitizer_guard = AgentEgressPayloadSanitizerGuard()
+        self.rate_burst_governor = AdaptiveRateBurstGovernorGuard()
+        self.prompt_fingerprint_guard = PromptFingerprintCacheGuard()
+        self.schema_validator_guard = StructuredOutputSchemaValidatorGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -217,6 +225,65 @@ class SecurityPipeline:
                             "code": "disallowed_cidr_subnet",
                             "message": f"Inbound request blocked by Network Perimeter Guard: {net_reason}",
                             "guard": "network_perimeter_guard",
+                        }
+                    },
+                    context=context
+                )
+
+        # -0.5. Instantaneous Prompt Fingerprint Cache Check
+        if self.settings.ENABLE_PROMPT_FINGERPRINT_GUARD:
+            for m in payload.get("messages", []):
+                if isinstance(m, dict) and isinstance(m.get("content"), str):
+                    fp_res = self.prompt_fingerprint_guard.check_fingerprint(m["content"])
+                    if fp_res.is_match:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="prompt_fingerprint_guard",
+                            violation_code=fp_res.violation_code or "known_attack_fingerprint_match",
+                            details=fp_res.details
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": fp_res.violation_code or "known_attack_fingerprint_match",
+                                    "message": f"Inbound prompt blocked by Fingerprint Guard: {fp_res.details}",
+                                    "guard": "prompt_fingerprint_guard",
+                                }
+                            },
+                            context=context
+                        )
+
+        # -0.2. Adaptive Rate Burst Governor Guard
+        if self.settings.ENABLE_RATE_BURST_GOVERNOR_GUARD and client_ip:
+            gov_res = self.rate_burst_governor.consume(client_ip)
+            if not gov_res.is_allowed:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="rate_burst_governor_guard",
+                    violation_code=gov_res.violation_code or "rate_burst_quota_exceeded",
+                    details=gov_res.details
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": gov_res.violation_code or "rate_burst_quota_exceeded",
+                            "message": f"Inbound request blocked by Rate Governor Guard: {gov_res.details}",
+                            "guard": "rate_burst_governor_guard",
+                            "retry_after": gov_res.retry_after_sec
                         }
                     },
                     context=context
@@ -2074,6 +2141,67 @@ class SecurityPipeline:
             msg = choice.get("message", {})
             content = msg.get("content", "") or ""
             tool_calls = msg.get("tool_calls", [])
+
+            # -0.8. Structured Output Schema Validator Guard
+            if self.settings.ENABLE_SCHEMA_VALIDATOR_GUARD and content and "expected_schema" in response_json:
+                schema_res = self.schema_validator_guard.validate_json_response(content, response_json["expected_schema"])
+                if not schema_res.is_valid:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="schema_validator_guard",
+                        violation_code=schema_res.violation_code or "schema_validation_failed",
+                        details=schema_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "schema_validation_error",
+                                "code": schema_res.violation_code or "schema_validation_failed",
+                                "message": f"Outbound response violated schema: {schema_res.details}",
+                                "guard": "schema_validator_guard",
+                            }
+                        }
+                    )
+
+            # -0.5. Agent Tool Egress Payload Sanitizer Guard
+            if self.settings.ENABLE_EGRESS_PAYLOAD_SANITIZER_GUARD and tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    t_args = fn.get("arguments", "")
+                    raw_str = t_args if isinstance(t_args, str) else json.dumps(t_args)
+                    eg_res = self.egress_sanitizer_guard.inspect_payload(t_name, raw_str)
+                    if eg_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="egress_payload_sanitizer_guard",
+                            violation_code=eg_res.violation_code or "egress_data_leak",
+                            details=eg_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": eg_res.violation_code or "egress_data_leak",
+                                    "message": f"Outbound tool call blocked by Egress Sanitizer Guard: {eg_res.details}",
+                                    "guard": "egress_payload_sanitizer_guard",
+                                    "tool": t_name,
+                                }
+                            }
+                        )
 
             # 0. Agent Tool Recursion Depth & Budget Quota Check
             if self.settings.ENABLE_RECURSION_BUDGET_GUARD and tool_calls:
