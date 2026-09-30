@@ -1,5 +1,6 @@
 """Bidirectional Interceptor Pipeline for LLM Security Guardrails Proxy."""
 
+import json
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -414,6 +415,9 @@ class SecurityPipeline:
                             "guard": "cost_quota_guard",
                         }
                     },
+                    context=context
+                )
+
         # 0e. Agent Plan Integrity Guard
         if self.settings.ENABLE_PLAN_INTEGRITY_GUARD and ("plan_steps" in payload or "execution_plan" in payload):
             plan = payload.get("plan_steps") or payload.get("execution_plan", [])
@@ -2267,7 +2271,6 @@ class SecurityPipeline:
                     t_args = fn.get("arguments", {})
                     if isinstance(t_args, str):
                         try:
-                            import json
                             t_args = json.loads(t_args)
                         except Exception:
                             t_args = {"raw": t_args}
@@ -2305,7 +2308,6 @@ class SecurityPipeline:
                     t_name = fn.get("name", "")
                     t_args = fn.get("arguments", "")
                     if isinstance(t_args, dict):
-                        import json
                         t_args = json.dumps(t_args)
                     sql_res = self.sql_guard.inspect(str(t_args))
                     if sql_res.is_blocked:
@@ -2346,7 +2348,6 @@ class SecurityPipeline:
                             code_str = t_args.get("code") or t_args.get("script") or str(t_args)
                         elif isinstance(t_args, str):
                             try:
-                                import json
                                 parsed_args = json.loads(t_args)
                                 if isinstance(parsed_args, dict):
                                     code_str = parsed_args.get("code") or parsed_args.get("script") or t_args
@@ -2422,7 +2423,6 @@ class SecurityPipeline:
                     t_args = fn.get("arguments", {})
                     if isinstance(t_args, str):
                         try:
-                            import json
                             t_args = json.loads(t_args)
                         except Exception:
                             t_args = {}
@@ -2462,7 +2462,6 @@ class SecurityPipeline:
                     t_args = fn.get("arguments", {})
                     if isinstance(t_args, str):
                         try:
-                            import json
                             t_args = json.loads(t_args)
                         except Exception:
                             t_args = {}
