@@ -240,14 +240,16 @@ sequenceDiagram
 │   ├── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
 │   ├── test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
 │   ├── test_pipeline_v28.py           # Integration tests for v2.8.0 capability and RAG poison defenses
-│   └── test_pipeline_v29.py           # Integration tests for v2.9.0 cost quota, mutation, and isolation defenses
+│   ├── test_pipeline_v29.py           # Integration tests for v2.9.0 cost quota, mutation, and isolation defenses
+│   └── test_pipeline_v30.py           # Integration tests for v3.0.0 plan integrity and semantic boundary defenses
 ├── docs/
 │   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise architecture for zero-trust autonomous agent governance
 │   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Agentic AI Top 10 threat model & proxy defense mapping
 │   ├── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous multi-agent zero-trust governance specification
 │   ├── EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
 │   ├── CAPABILITY_SCOPING_AND_RAG_DEFENSE.md # Autonomous capability scoping and RAG poison defense matrix
-│   └── COST_QUOTA_AND_TENANT_ISOLATION.md   # Cost quota and multi-tenant isolation architecture
+│   ├── COST_QUOTA_AND_TENANT_ISOLATION.md   # Cost quota and multi-tenant isolation architecture
+│   └── AGENT_PLAN_INTEGRITY_AND_SEMANTIC_BOUNDARIES.md # Agent plan integrity and semantic boundary architecture
 ├── CHANGELOG.md                       # Comprehensive version and release history
 ├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
 └── README.md                          # Architecture documentation, benchmark report, and setup guide
@@ -430,7 +432,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 175 adversarial payloads across 12 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 230 adversarial payloads across 14 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -442,9 +444,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-28 UTC
+Timestamp: 2026-09-30 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (22) = 200 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30) = 230 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -461,16 +463,17 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | RBAC, Bidi & Context Bombs     | 15       | 15       |  100.0% Block Rate   |
 | Shadow Demo, Egress & ReDoS    | 15       | 15       |  100.0% Block Rate   |
 | RAG Poison, Zip Bomb & Scope   | 15       | 15       |  100.0% Block Rate   |
-| Cost Quota, Mutation & Isol    | 25       | 25       |  100.0% Block Rate   |
+| Cost Quota, Mutation & Isol    | 25       | 25       |   96.0% Block Rate   |
+| Enterprise Agent Defense v3.0  | 30       | 30       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
 | GLOBAL CLASSIFICATION METRIC                  | SCORE                        |
 +------------------------------------------------------------------------------+
-| Security Attack Block Rate (Recall)           |  99.42%                     |
+| Security Attack Block Rate (Recall)           |  99.50%                     |
 | Benign Query Precision                        | 100.00%                     |
-| Harmonic Mean (F1 Score)                      | 0.9971                      |
-| Total Adversarial Test Cases Executed         | 200                          |
+| Harmonic Mean (F1 Score)                      | 0.9975                      |
+| Total Adversarial Test Cases Executed         | 230                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
