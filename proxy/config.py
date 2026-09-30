@@ -275,6 +275,42 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable prompt payload obfuscation and zero-width evasion guard"
     )
+    ENABLE_ARGUMENT_SANITIZER_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool call argument sanitizer guard"
+    )
+    ENABLE_PLAN_INTEGRITY_GUARD: bool = Field(
+        default=True,
+        description="Enable autonomous agent plan integrity guard"
+    )
+    ENABLE_CROSS_CONTEXT_GUARD: bool = Field(
+        default=True,
+        description="Enable cross-context contamination and session bleeding guard"
+    )
+    ENABLE_MODEL_INVERSION_GUARD: bool = Field(
+        default=True,
+        description="Enable model inversion and training data extraction guard"
+    )
+    ENABLE_SEMANTIC_BOUNDARY_GUARD: bool = Field(
+        default=True,
+        description="Enable indirect injection semantic boundary guard"
+    )
+    ENABLE_EGRESS_PAYLOAD_SANITIZER_GUARD: bool = Field(
+        default=True,
+        description="Enable agent egress payload sanitizer guard"
+    )
+    ENABLE_RATE_BURST_GOVERNOR_GUARD: bool = Field(
+        default=True,
+        description="Enable adaptive rate burst governor guard"
+    )
+    ENABLE_PROMPT_FINGERPRINT_GUARD: bool = Field(
+        default=True,
+        description="Enable prompt fingerprint cache guard"
+    )
+    ENABLE_SCHEMA_VALIDATOR_GUARD: bool = Field(
+        default=True,
+        description="Enable structured output schema validator guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
