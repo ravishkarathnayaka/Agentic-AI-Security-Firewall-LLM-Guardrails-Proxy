@@ -68,6 +68,8 @@ from proxy.guards.feedback_loop_guard import FeedbackLoopGuard
 from proxy.guards.token_entropy_guard import TokenEntropyGuard
 from proxy.guards.capability_lease_guard import CapabilityLeaseGuard
 from proxy.guards.obfuscation_evasion_guard import ObfuscationEvasionGuard
+from proxy.guards.argument_sanitizer_guard import ToolCallArgumentSanitizerGuard
+from proxy.guards.plan_integrity_guard import AgentPlanIntegrityGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -168,6 +170,8 @@ class SecurityPipeline:
         self.token_entropy_guard = TokenEntropyGuard()
         self.capability_lease_guard = CapabilityLeaseGuard()
         self.obfuscation_evasion_guard = ObfuscationEvasionGuard()
+        self.argument_sanitizer_guard = ToolCallArgumentSanitizerGuard()
+        self.plan_integrity_guard = AgentPlanIntegrityGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -337,8 +341,35 @@ class SecurityPipeline:
                             "guard": "cost_quota_guard",
                         }
                     },
-                    context=context
-                )
+        # 0e. Agent Plan Integrity Guard
+        if self.settings.ENABLE_PLAN_INTEGRITY_GUARD and ("plan_steps" in payload or "execution_plan" in payload):
+            plan = payload.get("plan_steps") or payload.get("execution_plan", [])
+            if isinstance(plan, list):
+                plan_res = self.plan_integrity_guard.validate_plan(plan)
+                if not plan_res.is_valid:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="plan_integrity_guard",
+                        violation_code=plan_res.violation_code or "plan_integrity_violation",
+                        details=plan_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": plan_res.violation_code or "plan_integrity_violation",
+                                "message": f"Inbound plan blocked by Plan Integrity Guard: {plan_res.details}",
+                                "guard": "plan_integrity_guard",
+                            }
+                        },
+                        context=context
+                    )
 
         messages = payload.get("messages", [])
         if not isinstance(messages, list):
@@ -1904,6 +1935,42 @@ class SecurityPipeline:
                             },
                             context=context
                         )
+
+        # 4o. Inbound Tool Call Argument Sanitizer Guard
+        if self.settings.ENABLE_ARGUMENT_SANITIZER_GUARD and inbound_tool_calls:
+            for tc in inbound_tool_calls:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                t_name = fn.get("name", "")
+                t_args = fn.get("arguments", {})
+                arg_res = self.argument_sanitizer_guard.sanitize_arguments(t_name, t_args)
+                if arg_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="argument_sanitizer_guard",
+                        violation_code=arg_res.violation_code or "argument_sanitizer_violation",
+                        details=arg_res.details,
+                        metadata={"tool_name": t_name}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": arg_res.violation_code or "argument_sanitizer_violation",
+                                "message": f"Inbound tool call blocked by Argument Sanitizer Guard: {arg_res.details}",
+                                "guard": "argument_sanitizer_guard",
+                                "tool": t_name,
+                            }
+                        },
+                        context=context
+                    )
+                elif arg_res.sanitized_args is not None and isinstance(t_args, dict):
+                    fn["arguments"] = arg_res.sanitized_args
 
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
