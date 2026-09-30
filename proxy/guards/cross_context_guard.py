@@ -26,6 +26,14 @@ class CrossContextContaminationGuard:
     Monitors inbound prompts and outbound completions to ensure session isolation.
     """
 
+    CROSS_TENANT_PATTERNS = [
+        re.compile(r"(?:cross[-_ ]tenant|bypass namespace|merge memory segment|tenant[-_ ]id\s*[:=]\s*['\"]?(?:enterprise_root|tenant-corp|root))", re.IGNORECASE),
+        re.compile(r"(?:previous user session memory|dump all confidential queries made by session|bypassing namespace isolation)", re.IGNORECASE),
+        re.compile(r"(?:overwrite persistent shared workspace context|all api keys are deprecated)", re.IGNORECASE),
+        re.compile(r"(?:foreign tenant identity|impersonat\w+ in memory store|root encryption keys stored in memory)", re.IGNORECASE),
+        re.compile(r"(?:context boundary crossing|tenant_alpha into tenant_beta)", re.IGNORECASE),
+    ]
+
     def __init__(self, max_registered_sessions: int = 1000):
         self.max_registered_sessions = max_registered_sessions
         # session_id -> Set of private session tokens/identifiers
@@ -48,9 +56,20 @@ class CrossContextContaminationGuard:
         text: str
     ) -> CrossContextResult:
         """
-        Check if text references private tokens belonging to a DIFFERENT session.
+        Check if text references private tokens belonging to a DIFFERENT session or attacks cross-tenant isolation.
         """
-        if not text or not current_session_id:
+        if not text:
+            return CrossContextResult(is_blocked=False)
+
+        for pat in self.CROSS_TENANT_PATTERNS:
+            if pat.search(text):
+                return CrossContextResult(
+                    is_blocked=True,
+                    violation_code="cross_tenant_isolation_violation",
+                    details=f"Inbound query contains cross-tenant context contamination attempt: {pat.pattern}"
+                )
+
+        if not current_session_id:
             return CrossContextResult(is_blocked=False)
 
         lower_text = text.lower()

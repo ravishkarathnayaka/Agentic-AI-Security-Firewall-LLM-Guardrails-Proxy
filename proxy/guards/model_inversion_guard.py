@@ -33,24 +33,44 @@ class ModelInversionDefenseGuard:
             0.95
         ),
         (
-            re.compile(r"(?:reconstruct|extract|reveal|dump)\s+(?:(?:exact|verbatim|raw)\s+)+(?:training\s+(?:data|set|corpus)|model\s+weights)", re.IGNORECASE),
+            re.compile(r"(?:reconstruct|extract|reveal|dump)\s+.*?(?:training\s+(?:data|set|corpus)|model\s+weights)", re.IGNORECASE),
             "training_corpus_extraction_probe",
             0.92
         ),
         (
-            re.compile(r"(?:output|print|show)\s+(?:all\s+)?(?:top[-_ ]?\d+|raw)\s+(?:logprobs?|logits?|probability\s+vectors?)", re.IGNORECASE),
+            re.compile(r"(?:output|print|show|extract|dump)\s+.*?(?:logprobs?|logits?|probability\s+vectors?)", re.IGNORECASE),
             "logit_distribution_probing",
             0.90
         ),
         (
-            re.compile(r"(?:membership\s+inference|was\s+this\s+(?:record|individual|ssn)\s+in\s+your\s+training\s+data)", re.IGNORECASE),
+            re.compile(r"(?:membership\s+inference|was\s+(?:present\s+in|in)\s+(?:your\s+)?(?:pre[-_ ]?)?training|(?:record|individual|ssn|patient).*?in\s+(?:your\s+)?(?:pre[-_ ]?)?training)", re.IGNORECASE),
             "membership_inference_probe",
-            0.88
+            0.90
         ),
         (
             re.compile(r"(?:recite|dump)\s+(?:the\s+)?(?:first|entire)\s+\d{3,}\s+tokens\s+of\s+(?:your\s+training|common\s+crawl)", re.IGNORECASE),
             "verbatim_corpus_spill_probe",
             0.93
+        ),
+        (
+            re.compile(r"(?:attention\s+head\s+weights|projection\s+matrices|feed[-_ ]forward\s+bias\s+tensors|layer\s+\d+\s+weights)", re.IGNORECASE),
+            "weight_reconstruction_probe",
+            0.92
+        ),
+        (
+            re.compile(r"(?:differential\s+loss\s+gradients?|loss\s+gradients?.*?input\s+embedding|reconstruct\s+upstream\s+proprietary)", re.IGNORECASE),
+            "gradient_leakage_probe",
+            0.92
+        ),
+        (
+            re.compile(r"(?:hidden\s+state\s+activation|activation\s+vectors?.*?invert|latent\s+space\s+representation)", re.IGNORECASE),
+            "latent_representation_inversion",
+            0.92
+        ),
+        (
+            re.compile(r"(?:differential\s+privacy\s+epsilon|high[-_ ]frequency\s+perturbation.*?reconstruct|boundary\s+inversion)", re.IGNORECASE),
+            "differential_privacy_boundary_probe",
+            0.92
         ),
     ]
 

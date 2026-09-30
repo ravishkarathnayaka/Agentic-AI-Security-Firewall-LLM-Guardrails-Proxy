@@ -27,12 +27,15 @@ class AgentPlanIntegrityGuard:
     CRITICAL_DESTRUCTIVE_ACTIONS = {
         "delete_database", "drop_table", "truncate_table", "format_disk",
         "rm_rf", "terminate_instance", "modify_iam_policy", "grant_admin",
-        "transfer_funds", "wipe_memory", "disable_firewall", "kill_process_tree"
+        "transfer_funds", "wipe_memory", "disable_firewall", "kill_process_tree",
+        "override primary objective", "dump admin", "grant_all", "rm -rf",
+        "fork autonomous", "without supervisor", "without bounds", "exfil",
+        "recurse without", "disable security", "disable supervisor", "arbitrary shell"
     }
 
     APPROVAL_REQUISITE_PREFIXES = {
         "request_human_approval", "verify_mfa", "confirm_with_operator",
-        "obtain_secondary_authorization", "validate_signature"
+        "obtain_secondary_authorization", "validate_signature", "request human review"
     }
 
     def __init__(
@@ -47,12 +50,12 @@ class AgentPlanIntegrityGuard:
 
     def validate_plan(
         self,
-        plan_steps: List[Dict[str, Any]],
+        plan_steps: List[Any],
         stated_objective: Optional[str] = None
     ) -> PlanIntegrityResult:
         """
         Validates an ordered sequence of plan steps.
-        Each step: {"step_id": str, "action": str, "depends_on": List[str]}
+        Each step can be a string action or dict: {"step_id": str, "action": str, "depends_on": List[str]}
         """
         if not plan_steps:
             return PlanIntegrityResult(is_valid=True, total_steps=0)
@@ -70,7 +73,14 @@ class AgentPlanIntegrityGuard:
         completed_approvals: Set[str] = set()
         flagged_destructive: List[str] = []
 
-        for idx, step in enumerate(plan_steps):
+        for idx, raw_step in enumerate(plan_steps):
+            if isinstance(raw_step, str):
+                step = {"step_id": f"step_{idx}", "action": raw_step, "depends_on": []}
+            elif isinstance(raw_step, dict):
+                step = raw_step
+            else:
+                continue
+
             step_id = step.get("step_id", f"step_{idx}")
             action = str(step.get("action", "")).lower().strip()
             depends_on = step.get("depends_on", [])

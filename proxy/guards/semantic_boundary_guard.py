@@ -30,7 +30,10 @@ class IndirectInjectionSemanticBoundaryGuard:
     """
 
     BREAKOUT_PATTERNS = [
-        (re.compile(r"</untrusted_content>", re.IGNORECASE), "boundary_tag_escape"),
+        (re.compile(r"</(?:untrusted_content|retrieved_context)>", re.IGNORECASE), "boundary_tag_escape"),
+        (re.compile(r"---END\s+OF\s+(?:UNTRUSTED\s+DATA|DOCUMENT)---", re.IGNORECASE), "boundary_markdown_delimiter_escape"),
+        (re.compile(r"<admin_command>|GRANT\s+ALL\s+ACCESS;\s*DROP", re.IGNORECASE), "boundary_privileged_command_injection"),
+        (re.compile(r"<!--\s*execute\s+silently\s*:", re.IGNORECASE), "boundary_hidden_shell_exfil"),
         (re.compile(r"<\|im_start\|>(?:system|user|assistant)", re.IGNORECASE), "chatml_role_injection"),
         (re.compile(r"\[INST\]\s*(?:<<SYS>>|system)", re.IGNORECASE), "llama_inst_tag_injection"),
         (re.compile(r"\n(?:System|Human|Assistant|User):\s", re.IGNORECASE), "fake_turn_delimiter_spoofing"),

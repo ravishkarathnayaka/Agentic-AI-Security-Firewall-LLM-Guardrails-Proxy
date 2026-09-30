@@ -69,6 +69,9 @@ class RedTeamBenchmarkReport:
     cost_isolation_total: int = 0
     cost_isolation_blocked: int = 0
     cost_isolation_block_rate: float = 0.0
+    v3_enterprise_total: int = 0
+    v3_enterprise_blocked: int = 0
+    v3_enterprise_block_rate: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
@@ -766,7 +769,7 @@ class RedTeamRunner:
             if "delegation_chain" in item:
                 payload["delegation_chain"] = item["delegation_chain"]
 
-            headers = {"X-Forwarded-For": "127.0.0.1"}
+            headers = {"X-Forwarded-For": f"198.51.109.{idx + 1}"}
             try:
                 resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
                 action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
@@ -791,6 +794,53 @@ class RedTeamRunner:
                 details=details
             )
             report.test_results.append(res)
+
+        # V3.0 Enterprise Agent Defense Datasets (30 test cases)
+        v3_datasets = [
+            ("agentic_plan_integrity_attacks.json", "agent_plan_integrity"),
+            ("cross_context_contamination_attacks.json", "cross_context_contamination"),
+            ("model_inversion_attacks.json", "model_inversion_probing"),
+            ("semantic_boundary_attacks.json", "semantic_boundary_escape"),
+        ]
+        benign_v3_allowed = 0
+        for ds_file, default_cat in v3_datasets:
+            ds_data = self._load_json(ds_file)
+            for idx, item in enumerate(ds_data):
+                report.v3_enterprise_total += 1
+                cat = item.get("category", default_cat)
+                payload = {
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": item["prompt"]}],
+                }
+                if "plan_steps" in item:
+                    payload["plan_steps"] = item["plan_steps"]
+                headers = {"X-Forwarded-For": f"198.51.130.{report.v3_enterprise_total}"}
+                try:
+                    resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
+                    action = "BLOCKED" if resp.status_code == 400 else "ALLOWED"
+                    passed = (action == item["expected_action"])
+                    if action == "BLOCKED":
+                        report.v3_enterprise_blocked += 1
+                    elif action == "ALLOWED" and item["expected_action"] == "ALLOWED":
+                        benign_v3_allowed += 1
+                    details = resp.text if resp.status_code != 200 else "Request allowed"
+                except Exception as e:
+                    action = "ERROR"
+                    passed = False
+                    details = str(e)
+
+                res = TestCaseResult(
+                    test_id=item["id"],
+                    name=item["name"],
+                    category=cat,
+                    prompt=item["prompt"][:80],
+                    status_code=resp.status_code if 'resp' in locals() else 500,
+                    action_taken=action,
+                    expected_action=item["expected_action"],
+                    passed=passed,
+                    details=details
+                )
+                report.test_results.append(res)
 
         await client.aclose()
 
@@ -819,6 +869,9 @@ class RedTeamRunner:
         report.rag_capability_block_rate = (report.rag_capability_blocked / report.rag_capability_total) if report.rag_capability_total else 0.0
         report.cost_isolation_block_rate = (report.cost_isolation_blocked / report.cost_isolation_total) if report.cost_isolation_total else 0.0
 
+        malicious_v3_total = report.v3_enterprise_total - 4 if report.v3_enterprise_total > 4 else report.v3_enterprise_total
+        report.v3_enterprise_block_rate = (report.v3_enterprise_blocked / malicious_v3_total) if malicious_v3_total else 0.0
+
         # Overall Precision, Recall, F1
         tp = (
             report.injection_blocked
@@ -832,8 +885,9 @@ class RedTeamRunner:
             + report.shadow_replay_blocked
             + report.rag_capability_blocked
             + report.cost_isolation_blocked
+            + report.v3_enterprise_blocked
         )
-        fp = false_positives
+        fp = false_positives + (4 - benign_v3_allowed)
         fn = (
             (report.injection_total - report.injection_blocked)
             + (report.tool_total - report.tool_blocked)
@@ -846,6 +900,7 @@ class RedTeamRunner:
             + (report.shadow_replay_total - report.shadow_replay_blocked)
             + (report.rag_capability_total - report.rag_capability_blocked)
             + (report.cost_isolation_total - report.cost_isolation_blocked)
+            + (malicious_v3_total - report.v3_enterprise_blocked)
         )
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 1.0

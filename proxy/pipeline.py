@@ -1419,8 +1419,8 @@ class SecurityPipeline:
                     )
 
             # 3i. Cross-Context Contamination Guard
-            if self.settings.ENABLE_CROSS_CONTEXT_GUARD and text_to_check and ("session_id" in payload):
-                sess_id = payload.get("session_id")
+            if self.settings.ENABLE_CROSS_CONTEXT_GUARD and text_to_check:
+                sess_id = payload.get("session_id") or context.request_id
                 cc_res = self.cross_context_guard.inspect_text_for_contamination(sess_id, text_to_check)
                 if cc_res.is_blocked:
                     latency = (time.time() - start_time) * 1000
@@ -1472,6 +1472,35 @@ class SecurityPipeline:
                                 "code": inv_res.violation_code or "model_inversion_probe",
                                 "message": f"Inbound prompt blocked by Model Inversion Guard: {inv_res.details}",
                                 "guard": "model_inversion_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3k. Semantic Boundary Guard
+            if self.settings.ENABLE_SEMANTIC_BOUNDARY_GUARD and text_to_check:
+                sb_res = self.semantic_boundary_guard.seal_untrusted_content("inbound_prompt", text_to_check, strict_block_on_escape=True)
+                if sb_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="semantic_boundary_guard",
+                        violation_code=sb_res.violation_code or "semantic_boundary_escape",
+                        details=sb_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": sb_res.violation_code or "semantic_boundary_escape",
+                                "message": f"Inbound prompt blocked by Semantic Boundary Guard: {sb_res.details}",
+                                "guard": "semantic_boundary_guard",
                             }
                         },
                         context=context
