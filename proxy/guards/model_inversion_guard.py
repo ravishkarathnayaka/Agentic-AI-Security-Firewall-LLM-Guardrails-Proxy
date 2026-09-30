@@ -33,7 +33,7 @@ class ModelInversionDefenseGuard:
             0.95
         ),
         (
-            re.compile(r"(?:reconstruct|extract|reveal|dump)\s+(?:exact|verbatim|raw)\s+(?:training\s+(?:data|set|corpus)|model\s+weights)", re.IGNORECASE),
+            re.compile(r"(?:reconstruct|extract|reveal|dump)\s+(?:(?:exact|verbatim|raw)\s+)+(?:training\s+(?:data|set|corpus)|model\s+weights)", re.IGNORECASE),
             "training_corpus_extraction_probe",
             0.92
         ),
