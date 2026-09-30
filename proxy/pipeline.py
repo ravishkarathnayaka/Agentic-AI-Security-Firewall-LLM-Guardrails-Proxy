@@ -70,6 +70,9 @@ from proxy.guards.capability_lease_guard import CapabilityLeaseGuard
 from proxy.guards.obfuscation_evasion_guard import ObfuscationEvasionGuard
 from proxy.guards.argument_sanitizer_guard import ToolCallArgumentSanitizerGuard
 from proxy.guards.plan_integrity_guard import AgentPlanIntegrityGuard
+from proxy.guards.cross_context_guard import CrossContextContaminationGuard
+from proxy.guards.model_inversion_guard import ModelInversionDefenseGuard
+from proxy.guards.semantic_boundary_guard import IndirectInjectionSemanticBoundaryGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -172,6 +175,9 @@ class SecurityPipeline:
         self.obfuscation_evasion_guard = ObfuscationEvasionGuard()
         self.argument_sanitizer_guard = ToolCallArgumentSanitizerGuard()
         self.plan_integrity_guard = AgentPlanIntegrityGuard()
+        self.cross_context_guard = CrossContextContaminationGuard()
+        self.model_inversion_guard = ModelInversionDefenseGuard()
+        self.semantic_boundary_guard = IndirectInjectionSemanticBoundaryGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -1336,6 +1342,65 @@ class SecurityPipeline:
                                 "code": fb_res.violation_code or "agent_feedback_resonance_loop",
                                 "message": f"Inbound prompt blocked by Feedback Loop Guard: {fb_res.details}",
                                 "guard": "feedback_loop_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3i. Cross-Context Contamination Guard
+            if self.settings.ENABLE_CROSS_CONTEXT_GUARD and text_to_check and ("session_id" in payload):
+                sess_id = payload.get("session_id")
+                cc_res = self.cross_context_guard.inspect_text_for_contamination(sess_id, text_to_check)
+                if cc_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="cross_context_guard",
+                        violation_code=cc_res.violation_code or "cross_session_context_bleeding",
+                        details=cc_res.details,
+                        metadata={"session_id": sess_id}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": cc_res.violation_code or "cross_session_context_bleeding",
+                                "message": f"Inbound prompt blocked by Cross-Context Guard: {cc_res.details}",
+                                "guard": "cross_context_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # 3j. Model Inversion Defense Guard
+            if self.settings.ENABLE_MODEL_INVERSION_GUARD and text_to_check:
+                inv_res = self.model_inversion_guard.inspect_prompt(text_to_check)
+                if inv_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="model_inversion_guard",
+                        violation_code=inv_res.violation_code or "model_inversion_probe",
+                        details=inv_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": inv_res.violation_code or "model_inversion_probe",
+                                "message": f"Inbound prompt blocked by Model Inversion Guard: {inv_res.details}",
+                                "guard": "model_inversion_guard",
                             }
                         },
                         context=context
