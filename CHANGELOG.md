@@ -5,6 +5,25 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-10-01
+
+### Added
+- **Multi-Agent Byzantine Fault Tolerance & Consensus Guard (`byzantine_consensus_guard.py`)**: Enforces supermajority 2/3 + 1 quorum thresholds on collaborative multi-agent decisions, isolating rogue subagent proposals and neutralizing sybil ballot stuffing.
+- **Agent Tool Concurrency & Deadlock Prevention Guard (`tool_concurrency_guard.py`)**: Detects cyclic resource lock dependency graphs, prevents Dining Philosophers deadlocks, and enforces maximum in-flight tool concurrency limits.
+- **Context Window Drift & Epistemic Divergence Guard (`context_drift_guard.py`)**: Progressive turn-by-turn trajectory tracking that intercepts gradual jailbreak grooming and mission displacement across multi-turn sessions.
+- **Agent Action Idempotency & Duplicate Execution Guard (`action_idempotency_guard.py`)**: Enforces deterministic digest deduplication windows on critical, irreversible actions (financial transfers, infrastructure provisioning, webhook triggers).
+- **Prompt Compression & Sparse Token Steganography Guard (`sparse_token_guard.py`)**: Strips invisible Unicode steganography glyphs, normalizes confusable homoglyphic scripts, and prevents payload smuggling through token compression.
+- **Dynamic Canary Watermark Rotation & Egress Leak Guard (`canary_rotation_guard.py`)**: Derives ephemeral HMAC-SHA256 watermarks with continuous time-based rotation, detecting system prompt leaks on outbound channels.
+- **Agent Sub-Task TTL & Orphan Killer Guard (`task_ttl_guard.py`)**: Enforces strict time-to-live ceilings and heartbeat timeouts on background workers, automatically killing orphaned or runaway child tasks.
+- **Structured Tool Return Schema & Payload Quarantine Guard (`tool_return_quarantine_guard.py`)**: Deep inspection of third-party API and tool observations before context window ingestion, mitigating indirect prompt injection and isolating untrusted external observations.
+- **Adversarial Benchmark Expansion to 270 Test Cases**: Added 4 new attack datasets (`agentic_concurrency_deadlock_attacks.json`, `context_drift_divergence_attacks.json`, `byzantine_subagent_attacks.json`, `tool_return_poison_attacks.json`), achieving a **100.0% overall pass rate (270/270), 99.58% attack recall, and 100.0% benign precision (F1 = 0.9979)**.
+- **Obsidian Amber Portal Showcase v3.1 Presets**: Integrated Tool Concurrency & Deadlock, Byzantine Rogue Consensus, Multi-Turn Context Drift, and Tool Return Indirect Injection sandbox presets.
+- **Architecture Specification**: Added `docs/BYZANTINE_CONSENSUS_AND_TOOL_CONCURRENCY.md` detailing multi-agent consensus algorithms, deadlock graph cycle detection, and observation quarantine topologies.
+
+### Changed
+- Promoted enterprise proxy pipeline to **Version 3.1.0** with full integration of autonomous swarm defense guardrails.
+- Added comprehensive unit and integration test coverage across all v3.1 defense modules.
+
 ## [3.0.0] - 2026-09-30
 
 ### Added
