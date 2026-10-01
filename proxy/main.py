@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Agentic AI Security Firewall & Guardrails Proxy",
     description="Enterprise-grade AI security firewall mitigating OWASP Top 10 for LLMs",
-    version="1.0.0",
+    version="3.1.0",
     lifespan=lifespan
 )
 
@@ -81,6 +81,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "llm_security_guardrails_proxy",
+        "version": "3.1.0",
         "upstream_url": settings.UPSTREAM_LLM_URL,
         "guards": {
             "prompt_injection_guard": settings.ENABLE_PROMPT_INJECTION_GUARD,
@@ -89,6 +90,14 @@ async def health_check():
             "output_sanitizer": settings.ENABLE_OUTPUT_SANITIZER,
             "tool_call_validator": settings.ENABLE_TOOL_CALL_VALIDATOR,
             "rate_limiter": settings.ENABLE_RATE_LIMITER,
+            "tool_concurrency_guard": settings.ENABLE_TOOL_CONCURRENCY_GUARD,
+            "byzantine_consensus_guard": settings.ENABLE_BYZANTINE_CONSENSUS_GUARD,
+            "context_drift_guard": settings.ENABLE_CONTEXT_DRIFT_GUARD,
+            "action_idempotency_guard": settings.ENABLE_ACTION_IDEMPOTENCY_GUARD,
+            "sparse_token_guard": settings.ENABLE_SPARSE_TOKEN_GUARD,
+            "canary_rotation_guard": settings.ENABLE_CANARY_ROTATION_GUARD,
+            "task_ttl_guard": settings.ENABLE_TASK_TTL_GUARD,
+            "tool_return_quarantine_guard": settings.ENABLE_TOOL_RETURN_QUARANTINE_GUARD,
         }
     }
 
