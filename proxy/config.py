@@ -311,6 +311,38 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable structured output schema validator guard"
     )
+    ENABLE_TOOL_CONCURRENCY_GUARD: bool = Field(
+        default=True,
+        description="Enable agent tool concurrency and deadlock prevention guard"
+    )
+    ENABLE_CONTEXT_DRIFT_GUARD: bool = Field(
+        default=True,
+        description="Enable context window drift and epistemic divergence guard"
+    )
+    ENABLE_BYZANTINE_CONSENSUS_GUARD: bool = Field(
+        default=True,
+        description="Enable multi-agent byzantine consensus and rogue proposal guard"
+    )
+    ENABLE_ACTION_IDEMPOTENCY_GUARD: bool = Field(
+        default=True,
+        description="Enable agent action idempotency and duplicate execution guard"
+    )
+    ENABLE_SPARSE_TOKEN_GUARD: bool = Field(
+        default=True,
+        description="Enable prompt compression and sparse token steganography guard"
+    )
+    ENABLE_CANARY_ROTATION_GUARD: bool = Field(
+        default=True,
+        description="Enable dynamic canary watermark rotation guard"
+    )
+    ENABLE_TASK_TTL_GUARD: bool = Field(
+        default=True,
+        description="Enable agent sub-task TTL and orphan killer guard"
+    )
+    ENABLE_TOOL_RETURN_QUARANTINE_GUARD: bool = Field(
+        default=True,
+        description="Enable structured tool return schema quarantine guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
