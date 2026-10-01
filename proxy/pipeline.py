@@ -90,6 +90,9 @@ from proxy.guards.sidechannel_timing_guard import SidechannelTimingGuard
 from proxy.guards.multi_tenant_sandbox_jail_guard import MultiTenantSandboxJailGuard
 from proxy.guards.agent_reflection_loop_guard import AgentReflectionLoopGuard
 from proxy.guards.subagent_privilege_escalation_guard import SubagentPrivilegeEscalationGuard
+from proxy.guards.semantic_cache_poisoning_guard import SemanticCachePoisoningGuard
+from proxy.guards.cross_tenant_token_bleed_guard import CrossTenantTokenBleedGuard
+from proxy.guards.adaptive_rate_burst_guard import AdaptiveRateBurstGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -211,6 +214,9 @@ class SecurityPipeline:
         self.sandbox_jail_guard = MultiTenantSandboxJailGuard()
         self.reflection_loop_guard = AgentReflectionLoopGuard()
         self.subagent_privilege_guard = SubagentPrivilegeEscalationGuard()
+        self.cache_poisoning_guard = SemanticCachePoisoningGuard()
+        self.token_bleed_guard = CrossTenantTokenBleedGuard()
+        self.adaptive_rate_burst_guard = AdaptiveRateBurstGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -2500,6 +2506,73 @@ class SecurityPipeline:
                             context=context
                         )
 
+            # Adaptive Risk-Weighted Rate & Burst Throttling Guard
+            if self.settings.ENABLE_ADAPTIVE_RATE_BURST_GUARD:
+                sess_id = payload.get("session_id", context.request_id)
+                risk_lvl = float(payload.get("risk_score", 0.0))
+                token_cst = float(payload.get("token_cost", 1.0))
+                burst_res = self.adaptive_rate_burst_guard.evaluate_request(
+                    session_id=sess_id,
+                    token_cost=token_cst,
+                    risk_score=risk_lvl,
+                )
+                if burst_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="adaptive_rate_burst_guard",
+                        violation_code=burst_res.violation_code,
+                        details=burst_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": burst_res.violation_code,
+                                "message": f"Inbound request throttled by Adaptive Burst Guard: {burst_res.details}",
+                                "guard": "adaptive_rate_burst_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # Semantic Cache Poisoning Defense Guard
+            if self.settings.ENABLE_SEMANTIC_CACHE_POISONING_GUARD and "cache_key" in payload:
+                ck = payload.get("cache_key", "")
+                cp_prompt = payload.get("cache_prompt", "")
+                cp_resp = payload.get("cache_response", "")
+                if ck and cp_prompt:
+                    cp_res = self.cache_poisoning_guard.evaluate_cache_write(ck, cp_prompt, cp_resp)
+                    if cp_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="semantic_cache_poisoning_guard",
+                            violation_code=cp_res.violation_code,
+                            details=cp_res.details
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": cp_res.violation_code,
+                                    "message": f"Inbound cache write blocked by Cache Poisoning Guard: {cp_res.details}",
+                                    "guard": "semantic_cache_poisoning_guard",
+                                }
+                            },
+                            context=context
+                        )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
@@ -3240,6 +3313,34 @@ class SecurityPipeline:
                                 "code": refl_res.violation_code,
                                 "message": f"Outbound completion blocked by Reflection Loop Guard: {refl_res.details}",
                                 "guard": "agent_reflection_loop_guard",
+                            }
+                        }
+                    )
+
+            # 3k. Cross-Tenant Token Bleed & Memory Residue Guard
+            if self.settings.ENABLE_CROSS_TENANT_TOKEN_BLEED_GUARD and content:
+                curr_tenant = response_json.get("tenant_id") or "tenant_default"
+                bleed_res = self.token_bleed_guard.scan_response_for_bleed(curr_tenant, content)
+                if bleed_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="cross_tenant_token_bleed_guard",
+                        violation_code=bleed_res.violation_code,
+                        details=bleed_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": bleed_res.violation_code,
+                                "message": f"Outbound completion blocked by Token Bleed Guard: {bleed_res.details}",
+                                "guard": "cross_tenant_token_bleed_guard",
                             }
                         }
                     )
