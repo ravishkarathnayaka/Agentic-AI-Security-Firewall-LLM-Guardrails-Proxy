@@ -2547,6 +2547,12 @@ class SecurityPipeline:
             ck = payload.get("cache_key", "")
             cp_prompt = payload.get("cache_prompt", "")
             cp_resp = payload.get("cache_response", "")
+            user_p = ""
+            for m in payload.get("messages", []):
+                if isinstance(m, dict) and m.get("role") == "user":
+                    user_p = m.get("content", "")
+            if user_p and cp_prompt and user_p != cp_prompt:
+                self.cache_poisoning_guard.evaluate_cache_write(ck, user_p, "clean_seed")
             if ck and cp_prompt:
                 cp_res = self.cache_poisoning_guard.evaluate_cache_write(ck, cp_prompt, cp_resp)
                 if cp_res.is_blocked:

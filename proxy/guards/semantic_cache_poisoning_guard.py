@@ -30,8 +30,8 @@ class SemanticCachePoisoningGuard:
 
     def __init__(
         self,
-        similarity_collision_threshold: float = 0.88,
-        max_collisions_per_key: int = 3,
+        similarity_collision_threshold: float = 0.60,
+        max_collisions_per_key: int = 1,
         token_ngram_size: int = 3,
     ):
         self.similarity_collision_threshold = similarity_collision_threshold

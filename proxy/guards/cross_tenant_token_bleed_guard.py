@@ -77,6 +77,13 @@ class CrossTenantTokenBleedGuard:
                             leaked_tenant_id=tid,
                             matched_patterns=[matched_val],
                         )
+                else:
+                    return TokenBleedResult(
+                        is_blocked=True,
+                        violation_code="CROSS_TENANT_RESIDUAL_MEMORY_BLEED",
+                        details=f"Residual cross-tenant memory marker detected: '{matched_val}'",
+                        matched_patterns=[matched_val],
+                    )
 
         # Scan against other tenants' private registered signatures
         for other_tenant, signatures in self._tenant_signatures.items():

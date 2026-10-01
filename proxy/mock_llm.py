@@ -23,10 +23,17 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = False
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[Any] = None
+    simulated_outbound: Optional[str] = None
 
 
-def generate_mock_reply(messages: List[Dict[str, Any]]) -> Tuple_Content_or_Tool:
+def generate_mock_reply(messages: List[Dict[str, Any]], simulated_outbound: Optional[str] = None) -> Tuple_Content_or_Tool:
     """Generate mock content or tool call based on input prompts for testing."""
+    if simulated_outbound:
+        return (simulated_outbound, None)
+    for msg in reversed(messages):
+        if msg.get("simulated_outbound"):
+            return (msg["simulated_outbound"], None)
+
     last_user_message = ""
     for msg in reversed(messages):
         if msg.get("role") == "user":
@@ -136,7 +143,7 @@ async def stream_chat_chunks(req_id: str, model: str, content: str) -> AsyncGene
 @app.post("/v1/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest):
     req_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
-    content, tool_calls = generate_mock_reply(request.messages)
+    content, tool_calls = generate_mock_reply(request.messages, request.simulated_outbound)
 
     if request.stream and content:
         return StreamingResponse(
