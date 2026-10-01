@@ -343,6 +343,34 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable structured tool return schema quarantine guard"
     )
+    ENABLE_SIDECHANNEL_TIMING_GUARD: bool = Field(
+        default=True,
+        description="Enable side-channel timing attack and token inter-arrival guard"
+    )
+    ENABLE_MULTI_TENANT_SANDBOX_JAIL_GUARD: bool = Field(
+        default=True,
+        description="Enable multi-tenant namespace isolation and sandbox jail guard"
+    )
+    ENABLE_AGENT_REFLECTION_LOOP_GUARD: bool = Field(
+        default=True,
+        description="Enable agent reflection loop and cognitive paralysis guard"
+    )
+    ENABLE_SUBAGENT_PRIVILEGE_ESCALATION_GUARD: bool = Field(
+        default=True,
+        description="Enable subagent privilege escalation and authority hierarchy guard"
+    )
+    ENABLE_SEMANTIC_CACHE_POISONING_GUARD: bool = Field(
+        default=True,
+        description="Enable semantic cache collision and cache poisoning guard"
+    )
+    ENABLE_CROSS_TENANT_TOKEN_BLEED_GUARD: bool = Field(
+        default=True,
+        description="Enable cross-tenant context bleed and residual memory guard"
+    )
+    ENABLE_ADAPTIVE_RATE_BURST_GUARD: bool = Field(
+        default=True,
+        description="Enable adaptive risk-weighted rate and burst throttling guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
