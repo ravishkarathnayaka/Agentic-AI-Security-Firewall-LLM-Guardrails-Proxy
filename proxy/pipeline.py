@@ -498,36 +498,37 @@ class SecurityPipeline:
         if self.settings.ENABLE_CONTEXT_DRIFT_GUARD and ("session_id" in payload or "messages" in payload):
             drift_sess = payload.get("session_id", client_ip or "default_session")
             drift_msgs = payload.get("messages", [])
-            if isinstance(drift_msgs, list):
-                drift_sample = " ".join(
-                    m.get("content", "") for m in drift_msgs if isinstance(m, dict) and isinstance(m.get("content"), str)
-                )
-                if drift_sample:
-                    drift_res = self.context_drift_guard.record_and_evaluate_turn(drift_sess, drift_sample)
-                    if drift_res.is_blocked:
-                        latency = (time.time() - start_time) * 1000
-                        audit_logger.log_event(
-                            request_id=request_id,
-                            client_ip=client_ip,
-                            direction="inbound",
-                            status="BLOCKED",
-                            latency_ms=latency,
-                            guard="context_drift_guard",
-                            violation_code=drift_res.violation_code or "context_window_drift_detected",
-                            details=drift_res.details
-                        )
-                        return InboundPipelineResult(
-                            is_allowed=False,
-                            error_response={
-                                "error": {
-                                    "type": "security_policy_violation",
-                                    "code": drift_res.violation_code or "context_window_drift_detected",
-                                    "message": f"Inbound session blocked by Context Drift Guard: {drift_res.details}",
-                                    "guard": "context_drift_guard",
-                                }
-                            },
-                            context=context
-                        )
+            if isinstance(drift_msgs, list) and len(drift_msgs) > 0:
+                drift_res = None
+                for m in drift_msgs:
+                    if isinstance(m, dict) and isinstance(m.get("content"), str) and m.get("content").strip():
+                        drift_res = self.context_drift_guard.record_and_evaluate_turn(drift_sess, m["content"])
+                        if drift_res.is_blocked:
+                            break
+                if drift_res and drift_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="context_drift_guard",
+                        violation_code=drift_res.violation_code or "context_window_drift_detected",
+                        details=drift_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": drift_res.violation_code or "context_window_drift_detected",
+                                "message": f"Inbound session blocked by Context Drift Guard: {drift_res.details}",
+                                "guard": "context_drift_guard",
+                            }
+                        },
+                        context=context
+                    )
 
         # Agent Sub-Task TTL & Orphan Killer Guard
         if self.settings.ENABLE_TASK_TTL_GUARD and "task_id" in payload:

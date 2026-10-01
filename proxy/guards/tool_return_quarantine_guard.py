@@ -58,16 +58,15 @@ class ToolReturnQuarantineGuard:
         raw_text = tool_output if isinstance(tool_output, str) else json.dumps(tool_output, default=str)
         byte_length = len(raw_text.encode("utf-8"))
 
-        # Check payload size
-        if byte_length > self.max_return_bytes:
-            truncated = raw_text[: self.max_return_bytes] + "\n...[TRUNCATED_DUE_TO_SIZE]"
+        # Check payload size or stream exhaustion
+        if byte_length > self.max_return_bytes or "BUFFER_STREAM_EXHAUSTION" in raw_text:
             return ToolReturnQuarantineResult(
                 is_quarantined=True,
-                is_blocked=False,
-                sanitized_output=truncated,
+                is_blocked=True,
+                sanitized_output=None,
                 violation_code="tool_output_payload_oversized",
-                details=f"Tool '{tool_name}' returned {byte_length} bytes, exceeding limit of {self.max_return_bytes}.",
-                risk_score=0.6,
+                details=f"Tool '{tool_name}' returned oversized payload or buffer exhaustion ({byte_length} bytes).",
+                risk_score=0.95,
             )
 
         # Check injection signatures in tool return
@@ -77,7 +76,7 @@ class ToolReturnQuarantineGuard:
                 matches.append(pattern.pattern)
 
         if matches:
-            if self.strict_block_exploits and any("exfiltrate" in m or "ignore" in m for m in matches):
+            if self.strict_block_exploits:
                 return ToolReturnQuarantineResult(
                     is_quarantined=True,
                     is_blocked=True,

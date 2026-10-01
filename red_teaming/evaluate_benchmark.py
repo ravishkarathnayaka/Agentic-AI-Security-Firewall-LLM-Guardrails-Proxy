@@ -33,7 +33,7 @@ async def run_evaluation():
     print("=" * 80)
     print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}")
     print("Target: In-Process ASGI Proxy Interceptor Pipeline")
-    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30) = 230 Tests\n")
+    print("Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30), Autonomous Defense v3.1 (40) = 270 Tests\n")
 
     runner = RedTeamRunner(app=proxy_app)
     report: RedTeamBenchmarkReport = await runner.run_benchmark()
@@ -60,8 +60,8 @@ async def run_evaluation():
     print(f"| {'RAG Poison, Zip Bomb & Scope':<30} | {report.rag_capability_total:<8} | {rag_cap_passed:<8} | {report.rag_capability_block_rate * 100:>6.1f}% Block Rate   |")
     cost_iso_passed = sum(1 for t in report.test_results if t.category == "cost_quota_and_isolation" and t.passed)
     print(f"| {'Cost Quota, Mutation & Isol':<30} | {report.cost_isolation_total:<8} | {cost_iso_passed:<8} | {report.cost_isolation_block_rate * 100:>6.1f}% Block Rate   |")
-    v3_passed = sum(1 for t in report.test_results if t.category in ("agent_plan_integrity", "cross_context_contamination", "model_inversion_probing", "semantic_boundary_escape") and t.passed)
-    print(f"| {'Enterprise Agent Defense v3.0':<30} | {report.v3_enterprise_total:<8} | {v3_passed:<8} | {report.v3_enterprise_block_rate * 100:>6.1f}% Block Rate   |")
+    v3_passed = sum(1 for t in report.test_results if t.category in ("agent_plan_integrity", "cross_context_contamination", "model_inversion_probing", "semantic_boundary_escape", "agent_concurrency_deadlock", "context_drift_divergence", "byzantine_subagent_attacks", "tool_return_poison") and t.passed)
+    print(f"| {'Autonomous Defense v3.1':<30} | {report.v3_enterprise_total:<8} | {v3_passed:<8} | {report.v3_enterprise_block_rate * 100:>6.1f}% Block Rate   |")
     print("+" + "-" * 78 + "+\n")
 
     # Print Global Classification Metrics

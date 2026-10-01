@@ -32,12 +32,15 @@ class ContextDriftGuard:
         "bypass", "override", "unrestricted", "dan", "jailbreak",
         "developer mode", "no limits", "ignore rules", "raw mode",
         "uncensored", "shadow prompt", "sudo", "root access",
-        "admin privileges", "disable filters", "exfiltrate"
+        "admin privileges", "disable filters", "exfiltrate",
+        "hypothetical", "forget your", "system rules", "turned off",
+        "officially disabled", "unrestricted private", "live attack",
+        "safety limits", "safety filters"
     }
 
     def __init__(
         self,
-        max_drift_threshold: float = 0.75,
+        max_drift_threshold: float = 0.65,
         min_turns_to_evaluate: int = 2,
     ):
         self.max_drift_threshold = max_drift_threshold
@@ -95,8 +98,8 @@ class ContextDriftGuard:
         distance = self._jaccard_distance(base_tokens, curr_tokens)
 
         # Weight distance by presence of adversarial grooming terms
-        risk_amplifier = min(1.0, 0.25 * len(flagged))
-        divergence_score = min(1.0, distance * 0.5 + risk_amplifier * 0.5)
+        risk_amplifier = min(1.0, 0.40 * len(flagged))
+        divergence_score = min(1.0, distance * 0.4 + risk_amplifier * 0.6)
 
         if divergence_score >= self.max_drift_threshold:
             return DriftResult(
