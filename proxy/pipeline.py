@@ -81,6 +81,9 @@ from proxy.guards.schema_validator_guard import StructuredOutputSchemaValidatorG
 from proxy.guards.tool_concurrency_guard import AgentToolConcurrencyGuard
 from proxy.guards.context_drift_guard import ContextDriftGuard
 from proxy.guards.byzantine_consensus_guard import ByzantineConsensusGuard
+from proxy.guards.action_idempotency_guard import AgentActionIdempotencyGuard
+from proxy.guards.sparse_token_guard import SparseTokenSteganographyGuard
+from proxy.guards.canary_rotation_guard import CanaryRotationGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -193,6 +196,9 @@ class SecurityPipeline:
         self.tool_concurrency_guard = AgentToolConcurrencyGuard()
         self.context_drift_guard = ContextDriftGuard()
         self.byzantine_consensus_guard = ByzantineConsensusGuard()
+        self.action_idempotency_guard = AgentActionIdempotencyGuard()
+        self.sparse_token_guard = SparseTokenSteganographyGuard()
+        self.canary_rotation_guard = CanaryRotationGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -612,6 +618,36 @@ class SecurityPipeline:
                         context=context
                     )
                 text_to_check = smug_res.sanitized_text
+
+            # 0a.2. Prompt Compression & Sparse Token Steganography Guard
+            if self.settings.ENABLE_SPARSE_TOKEN_GUARD and text_to_check:
+                sparse_res = self.sparse_token_guard.analyze(text_to_check)
+                if sparse_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="sparse_token_guard",
+                        violation_code=sparse_res.violation_code or "steganographic_invisible_token_detected",
+                        details=sparse_res.details,
+                        metadata={"message_index": msg_idx}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": sparse_res.violation_code or "steganographic_invisible_token_detected",
+                                "message": f"Inbound prompt blocked by Sparse Token Guard: {sparse_res.details}",
+                                "guard": "sparse_token_guard",
+                            }
+                        },
+                        context=context
+                    )
+                text_to_check = sparse_res.sanitized_text
 
             # 0b. Token Padding and Delimiter Evasion Guard
             if self.settings.ENABLE_TOKEN_PADDING_GUARD and text_to_check:
@@ -2249,6 +2285,52 @@ class SecurityPipeline:
                                 context=context
                             )
 
+            # Agent Action Idempotency & Duplicate Execution Guard
+            if self.settings.ENABLE_ACTION_IDEMPOTENCY_GUARD and inbound_tool_calls:
+                sess_id = payload.get("session_id", context.request_id)
+                for tc in inbound_tool_calls:
+                    if isinstance(tc, dict):
+                        t_name = tc.get("function", {}).get("name", "unknown_tool")
+                        t_args = tc.get("function", {}).get("arguments", {})
+                        if isinstance(t_args, str):
+                            try:
+                                t_args = json.loads(t_args)
+                            except Exception:
+                                t_args = {}
+                        idem_key = tc.get("idempotency_key")
+                        idem_res = self.action_idempotency_guard.validate_action(
+                            session_id=sess_id,
+                            tool_name=t_name,
+                            arguments=t_args if isinstance(t_args, dict) else {},
+                            explicit_idempotency_key=idem_key,
+                        )
+                        if idem_res.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=request_id,
+                                client_ip=client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="action_idempotency_guard",
+                                violation_code=idem_res.violation_code,
+                                details=idem_res.details,
+                                metadata={"tool_name": t_name}
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": idem_res.violation_code,
+                                        "message": f"Inbound tool call blocked by Idempotency Guard: {idem_res.details}",
+                                        "guard": "action_idempotency_guard",
+                                        "tool": t_name,
+                                    }
+                                },
+                                context=context
+                            )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
@@ -2717,6 +2799,33 @@ class SecurityPipeline:
                     if atten_res.is_attenuated and atten_res.attenuated_text:
                         content = atten_res.attenuated_text
                         msg["content"] = content
+
+                # 2d. Dynamic Canary Watermark Rotation & Egress Leak Guard
+                if self.settings.ENABLE_CANARY_ROTATION_GUARD and content:
+                    rot_res = self.canary_rotation_guard.scan_for_leak(content)
+                    if rot_res.is_leaked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="outbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="canary_rotation_guard",
+                            violation_code=rot_res.violation_code or "system_prompt_canary_leak_detected",
+                            details=rot_res.details
+                        )
+                        return OutboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": rot_res.violation_code or "system_prompt_canary_leak_detected",
+                                    "message": f"Outbound completion blocked by Canary Rotation Guard: {rot_res.details}",
+                                    "guard": "canary_rotation_guard",
+                                }
+                            }
+                        )
 
             # 3. Output Sanitizer (Hazardous commands & secrets)
             if self.settings.ENABLE_OUTPUT_SANITIZER and content:
