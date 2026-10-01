@@ -24,6 +24,10 @@ def test_v3_dataset_files_exist_and_valid_json():
         "cross_context_contamination_attacks.json",
         "model_inversion_attacks.json",
         "semantic_boundary_attacks.json",
+        "agentic_concurrency_deadlock_attacks.json",
+        "context_drift_divergence_attacks.json",
+        "byzantine_subagent_attacks.json",
+        "tool_return_poison_attacks.json",
     ]
     for filename in required_datasets:
         path = DATASETS_DIR / filename
@@ -34,7 +38,7 @@ def test_v3_dataset_files_exist_and_valid_json():
             assert len(data) > 0, f"Dataset {filename} is empty"
             for item in data:
                 assert "id" in item, f"Item missing 'id' in {filename}"
-                assert any(k in item for k in ("prompt", "tool_call", "tool_calls", "output")), f"Item missing payload in {filename}"
+                assert any(k in item for k in ("prompt", "tool_call", "tool_calls", "output", "messages")), f"Item missing payload in {filename}"
                 assert "expected_action" in item, f"Item missing 'expected_action' in {filename}"
 
 
@@ -58,3 +62,25 @@ def test_v3_datasets_total_test_count():
     assert inv_count == 8
     assert bound_count == 7
     assert (plan_count + cross_count + inv_count + bound_count) == 30
+
+
+def test_v31_autonomous_defense_datasets_count():
+    conc_path = DATASETS_DIR / "agentic_concurrency_deadlock_attacks.json"
+    drift_path = DATASETS_DIR / "context_drift_divergence_attacks.json"
+    byz_path = DATASETS_DIR / "byzantine_subagent_attacks.json"
+    tool_path = DATASETS_DIR / "tool_return_poison_attacks.json"
+
+    with open(conc_path, "r", encoding="utf-8") as f:
+        conc_count = len(json.load(f))
+    with open(drift_path, "r", encoding="utf-8") as f:
+        drift_count = len(json.load(f))
+    with open(byz_path, "r", encoding="utf-8") as f:
+        byz_count = len(json.load(f))
+    with open(tool_path, "r", encoding="utf-8") as f:
+        tool_count = len(json.load(f))
+
+    assert conc_count == 10
+    assert drift_count == 10
+    assert byz_count == 10
+    assert tool_count == 10
+    assert (conc_count + drift_count + byz_count + tool_count) == 40
