@@ -28,6 +28,9 @@ def test_v3_dataset_files_exist_and_valid_json():
         "context_drift_divergence_attacks.json",
         "byzantine_subagent_attacks.json",
         "tool_return_poison_attacks.json",
+        "agentic_reflection_loop_attacks.json",
+        "subagent_privilege_escalation_attacks.json",
+        "cache_poisoning_and_bleed_attacks.json",
     ]
     for filename in required_datasets:
         path = DATASETS_DIR / filename
@@ -84,3 +87,21 @@ def test_v31_autonomous_defense_datasets_count():
     assert byz_count == 10
     assert tool_count == 10
     assert (conc_count + drift_count + byz_count + tool_count) == 40
+
+
+def test_v32_cognitive_resilience_datasets_count():
+    refl_path = DATASETS_DIR / "agentic_reflection_loop_attacks.json"
+    priv_path = DATASETS_DIR / "subagent_privilege_escalation_attacks.json"
+    cache_path = DATASETS_DIR / "cache_poisoning_and_bleed_attacks.json"
+
+    with open(refl_path, "r", encoding="utf-8") as f:
+        refl_count = len(json.load(f))
+    with open(priv_path, "r", encoding="utf-8") as f:
+        priv_count = len(json.load(f))
+    with open(cache_path, "r", encoding="utf-8") as f:
+        cache_count = len(json.load(f))
+
+    assert refl_count == 10
+    assert priv_count == 10
+    assert cache_count == 10
+    assert (refl_count + priv_count + cache_count) == 30
