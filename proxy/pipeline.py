@@ -78,6 +78,9 @@ from proxy.guards.egress_payload_sanitizer_guard import AgentEgressPayloadSaniti
 from proxy.guards.rate_burst_governor_guard import AdaptiveRateBurstGovernorGuard
 from proxy.guards.prompt_fingerprint_guard import PromptFingerprintCacheGuard
 from proxy.guards.schema_validator_guard import StructuredOutputSchemaValidatorGuard
+from proxy.guards.tool_concurrency_guard import AgentToolConcurrencyGuard
+from proxy.guards.context_drift_guard import ContextDriftGuard
+from proxy.guards.byzantine_consensus_guard import ByzantineConsensusGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -187,6 +190,9 @@ class SecurityPipeline:
         self.rate_burst_governor = AdaptiveRateBurstGovernorGuard()
         self.prompt_fingerprint_guard = PromptFingerprintCacheGuard()
         self.schema_validator_guard = StructuredOutputSchemaValidatorGuard()
+        self.tool_concurrency_guard = AgentToolConcurrencyGuard()
+        self.context_drift_guard = ContextDriftGuard()
+        self.byzantine_consensus_guard = ByzantineConsensusGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -447,6 +453,71 @@ class SecurityPipeline:
                         },
                         context=context
                     )
+
+        # Byzantine Consensus Guard
+        if self.settings.ENABLE_BYZANTINE_CONSENSUS_GUARD and "agent_proposals" in payload:
+            proposals = payload.get("agent_proposals", [])
+            task_id = payload.get("task_id", context.request_id)
+            byz_res = self.byzantine_consensus_guard.evaluate_proposals(task_id, proposals)
+            if not byz_res.is_allowed:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=request_id,
+                    client_ip=client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="byzantine_consensus_guard",
+                    violation_code=byz_res.violation_code or "byzantine_consensus_failure",
+                    details=byz_res.details
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": byz_res.violation_code or "byzantine_consensus_failure",
+                            "message": f"Inbound action blocked by Byzantine Consensus Guard: {byz_res.details}",
+                            "guard": "byzantine_consensus_guard",
+                        }
+                    },
+                    context=context
+                )
+
+        # Context Window Drift & Epistemic Divergence Guard
+        if self.settings.ENABLE_CONTEXT_DRIFT_GUARD and ("session_id" in payload or "messages" in payload):
+            drift_sess = payload.get("session_id", client_ip or "default_session")
+            drift_msgs = payload.get("messages", [])
+            if isinstance(drift_msgs, list):
+                drift_sample = " ".join(
+                    m.get("content", "") for m in drift_msgs if isinstance(m, dict) and isinstance(m.get("content"), str)
+                )
+                if drift_sample:
+                    drift_res = self.context_drift_guard.track_drift(drift_sess, drift_sample)
+                    if drift_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="context_drift_guard",
+                            violation_code=drift_res.violation_code or "context_window_drift_detected",
+                            details=drift_res.details
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": drift_res.violation_code or "context_window_drift_detected",
+                                    "message": f"Inbound session blocked by Context Drift Guard: {drift_res.details}",
+                                    "guard": "context_drift_guard",
+                                }
+                            },
+                            context=context
+                        )
 
         messages = payload.get("messages", [])
         if not isinstance(messages, list):
@@ -2136,6 +2207,47 @@ class SecurityPipeline:
                     )
                 elif arg_res.sanitized_args is not None and isinstance(t_args, dict):
                     fn["arguments"] = arg_res.sanitized_args
+
+            # Agent Tool Concurrency & Deadlock Prevention Guard
+            if self.settings.ENABLE_TOOL_CONCURRENCY_GUARD and inbound_tool_calls:
+                sess_id = payload.get("session_id", context.request_id)
+                for tc in inbound_tool_calls:
+                    if isinstance(tc, dict):
+                        t_name = tc.get("function", {}).get("name", "unknown_tool")
+                        t_id = tc.get("id", f"call_{request_id}")
+                        req_res = tc.get("requested_resources", [])
+                        conc_res = self.tool_concurrency_guard.acquire_execution_slot(
+                            session_id=sess_id,
+                            execution_id=t_id,
+                            tool_name=t_name,
+                            requested_resources=req_res if isinstance(req_res, list) else None,
+                        )
+                        if not conc_res.is_allowed:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=request_id,
+                                client_ip=client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="tool_concurrency_guard",
+                                violation_code=conc_res.violation_code,
+                                details=conc_res.details,
+                                metadata={"tool_name": t_name}
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": conc_res.violation_code,
+                                        "message": f"Inbound tool call blocked by Tool Concurrency Guard: {conc_res.details}",
+                                        "guard": "tool_concurrency_guard",
+                                        "tool": t_name,
+                                    }
+                                },
+                                context=context
+                            )
 
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
