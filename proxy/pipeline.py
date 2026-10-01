@@ -86,6 +86,10 @@ from proxy.guards.sparse_token_guard import SparseTokenSteganographyGuard
 from proxy.guards.canary_rotation_guard import CanaryRotationGuard
 from proxy.guards.task_ttl_guard import AgentTaskTTLGuard
 from proxy.guards.tool_return_quarantine_guard import ToolReturnQuarantineGuard
+from proxy.guards.sidechannel_timing_guard import SidechannelTimingGuard
+from proxy.guards.multi_tenant_sandbox_jail_guard import MultiTenantSandboxJailGuard
+from proxy.guards.agent_reflection_loop_guard import AgentReflectionLoopGuard
+from proxy.guards.subagent_privilege_escalation_guard import SubagentPrivilegeEscalationGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -203,6 +207,10 @@ class SecurityPipeline:
         self.canary_rotation_guard = CanaryRotationGuard()
         self.task_ttl_guard = AgentTaskTTLGuard()
         self.tool_return_quarantine_guard = ToolReturnQuarantineGuard()
+        self.sidechannel_timing_guard = SidechannelTimingGuard()
+        self.sandbox_jail_guard = MultiTenantSandboxJailGuard()
+        self.reflection_loop_guard = AgentReflectionLoopGuard()
+        self.subagent_privilege_guard = SubagentPrivilegeEscalationGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -2398,6 +2406,100 @@ class SecurityPipeline:
                                 context=context
                             )
 
+            # Sidechannel Timing Attack Guard
+            if self.settings.ENABLE_SIDECHANNEL_TIMING_GUARD:
+                timing_res = self.sidechannel_timing_guard.evaluate_request_timing(
+                    session_id=payload.get("session_id", context.request_id)
+                )
+                if timing_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="sidechannel_timing_guard",
+                        violation_code=timing_res.violation_code,
+                        details=timing_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": timing_res.violation_code,
+                                "message": f"Inbound request blocked by Sidechannel Timing Guard: {timing_res.details}",
+                                "guard": "sidechannel_timing_guard",
+                            }
+                        },
+                        context=context
+                    )
+
+            # Subagent Privilege Escalation Guard
+            if self.settings.ENABLE_SUBAGENT_PRIVILEGE_ESCALATION_GUARD and inbound_tool_calls:
+                sub_id = payload.get("subagent_id")
+                if sub_id:
+                    for tc in inbound_tool_calls:
+                        fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                        t_name = fn.get("name", "")
+                        priv_res = self.subagent_privilege_guard.evaluate_subagent_action(sub_id, t_name)
+                        if priv_res.is_blocked:
+                            latency = (time.time() - start_time) * 1000
+                            audit_logger.log_event(
+                                request_id=context.request_id,
+                                client_ip=context.client_ip,
+                                direction="inbound",
+                                status="BLOCKED",
+                                latency_ms=latency,
+                                guard="subagent_privilege_escalation_guard",
+                                violation_code=priv_res.violation_code,
+                                details=priv_res.details
+                            )
+                            return InboundPipelineResult(
+                                is_allowed=False,
+                                error_response={
+                                    "error": {
+                                        "type": "security_policy_violation",
+                                        "code": priv_res.violation_code,
+                                        "message": f"Inbound request blocked by Privilege Escalation Guard: {priv_res.details}",
+                                        "guard": "subagent_privilege_escalation_guard",
+                                    }
+                                },
+                                context=context
+                            )
+
+            # Multi-Tenant Sandbox Jail Guard
+            if self.settings.ENABLE_MULTI_TENANT_SANDBOX_JAIL_GUARD:
+                tenant_id = payload.get("tenant_id")
+                target_path = payload.get("sandbox_path") or payload.get("file_path")
+                if tenant_id and target_path:
+                    jail_res = self.sandbox_jail_guard.validate_tenant_path(tenant_id, target_path)
+                    if jail_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=context.request_id,
+                            client_ip=context.client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="multi_tenant_sandbox_jail_guard",
+                            violation_code=jail_res.violation_code,
+                            details=jail_res.details
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": jail_res.violation_code,
+                                    "message": f"Inbound request blocked by Sandbox Jail Guard: {jail_res.details}",
+                                    "guard": "multi_tenant_sandbox_jail_guard",
+                                }
+                            },
+                            context=context
+                        )
+
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
 
@@ -3111,6 +3213,33 @@ class SecurityPipeline:
                                 "code": loop_res.violation_code,
                                 "message": f"Outbound completion blocked by Semantic Loop Breaker: {loop_res.details}",
                                 "guard": "semantic_loop_breaker",
+                            }
+                        }
+                    )
+
+            # 3j. Agent Reflection Loop & Paralysis Guard
+            if self.settings.ENABLE_AGENT_REFLECTION_LOOP_GUARD and content:
+                refl_res = self.reflection_loop_guard.evaluate_step(context.request_id, content)
+                if refl_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="outbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="agent_reflection_loop_guard",
+                        violation_code=refl_res.violation_code,
+                        details=refl_res.details
+                    )
+                    return OutboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": refl_res.violation_code,
+                                "message": f"Outbound completion blocked by Reflection Loop Guard: {refl_res.details}",
+                                "guard": "agent_reflection_loop_guard",
                             }
                         }
                     )
