@@ -84,6 +84,8 @@ from proxy.guards.byzantine_consensus_guard import ByzantineConsensusGuard
 from proxy.guards.action_idempotency_guard import AgentActionIdempotencyGuard
 from proxy.guards.sparse_token_guard import SparseTokenSteganographyGuard
 from proxy.guards.canary_rotation_guard import CanaryRotationGuard
+from proxy.guards.task_ttl_guard import AgentTaskTTLGuard
+from proxy.guards.tool_return_quarantine_guard import ToolReturnQuarantineGuard
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -199,6 +201,8 @@ class SecurityPipeline:
         self.action_idempotency_guard = AgentActionIdempotencyGuard()
         self.sparse_token_guard = SparseTokenSteganographyGuard()
         self.canary_rotation_guard = CanaryRotationGuard()
+        self.task_ttl_guard = AgentTaskTTLGuard()
+        self.tool_return_quarantine_guard = ToolReturnQuarantineGuard()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
@@ -525,6 +529,36 @@ class SecurityPipeline:
                             context=context
                         )
 
+        # Agent Sub-Task TTL & Orphan Killer Guard
+        if self.settings.ENABLE_TASK_TTL_GUARD and "task_id" in payload:
+            task_id = payload.get("task_id")
+            if task_id:
+                ttl_res = self.task_ttl_guard.validate_task_execution(task_id)
+                if ttl_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="task_ttl_guard",
+                        violation_code=ttl_res.violation_code or "task_ttl_violation",
+                        details=ttl_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": ttl_res.violation_code or "task_ttl_violation",
+                                "message": f"Inbound task blocked by Task TTL Guard: {ttl_res.details}",
+                                "guard": "task_ttl_guard",
+                            }
+                        },
+                        context=context
+                    )
+
         messages = payload.get("messages", [])
         if not isinstance(messages, list):
             return InboundPipelineResult(
@@ -557,6 +591,38 @@ class SecurityPipeline:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
+
+            # -0.8. Tool Return Payload Quarantine Guard
+            if self.settings.ENABLE_TOOL_RETURN_QUARANTINE_GUARD and role == "tool" and text_to_check:
+                tool_name = msg.get("name", "tool_observation")
+                quar_res = self.tool_return_quarantine_guard.inspect_and_quarantine(tool_name, text_to_check)
+                if quar_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=request_id,
+                        client_ip=client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="tool_return_quarantine_guard",
+                        violation_code=quar_res.violation_code or "tool_return_indirect_injection_blocked",
+                        details=quar_res.details,
+                        metadata={"tool_name": tool_name}
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": quar_res.violation_code or "tool_return_indirect_injection_blocked",
+                                "message": f"Tool output blocked by Quarantine Guard: {quar_res.details}",
+                                "guard": "tool_return_quarantine_guard",
+                            }
+                        },
+                        context=context
+                    )
+                if quar_res.is_quarantined and quar_res.sanitized_output is not None:
+                    text_to_check = str(quar_res.sanitized_output)
 
             # 00. Unicode Bidirectional (Bidi) Override & Visual Spoofing Check
             if self.settings.ENABLE_BIDI_OVERRIDE_GUARD and text_to_check:
