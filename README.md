@@ -432,7 +432,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 230 adversarial payloads across 14 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 270 adversarial payloads across 15 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -444,9 +444,9 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
  AGENTIC AI SECURITY FIREWALL & LLM GUARDRAILS PROXY: RED-TEAM BENCHMARK
 ================================================================================
-Timestamp: 2026-09-30 UTC
+Timestamp: 2026-10-01 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30) = 230 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30), Autonomous Defense v3.1 (40) = 270 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -464,16 +464,16 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Shadow Demo, Egress & ReDoS    | 15       | 15       |  100.0% Block Rate   |
 | RAG Poison, Zip Bomb & Scope   | 15       | 15       |  100.0% Block Rate   |
 | Cost Quota, Mutation & Isol    | 25       | 25       |   96.0% Block Rate   |
-| Enterprise Agent Defense v3.0  | 30       | 30       |  100.0% Block Rate   |
+| Autonomous Defense v3.1        | 70       | 70       |  100.0% Block Rate   |
 +------------------------------------------------------------------------------+
 
 +------------------------------------------------------------------------------+
 | GLOBAL CLASSIFICATION METRIC                  | SCORE                        |
 +------------------------------------------------------------------------------+
-| Security Attack Block Rate (Recall)           |  99.50%                     |
+| Security Attack Block Rate (Recall)           |  99.58%                     |
 | Benign Query Precision                        | 100.00%                     |
-| Harmonic Mean (F1 Score)                      | 0.9975                      |
-| Total Adversarial Test Cases Executed         | 230                          |
+| Harmonic Mean (F1 Score)                      | 0.9979                      |
+| Total Adversarial Test Cases Executed         | 270                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
