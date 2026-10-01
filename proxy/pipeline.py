@@ -1710,7 +1710,7 @@ class SecurityPipeline:
             sanitized_messages.append(new_msg)
 
         # 4. Inbound Tool Call Validation (if client sends tool calls)
-        inbound_tool_calls = payload.get("tool_calls")
+        inbound_tool_calls = payload.get("tool_calls") or payload.get("tools")
         if self.settings.ENABLE_TOOL_CALL_VALIDATOR and inbound_tool_calls:
             tool_res = self.tool_call_validator.validate_tool_calls(inbound_tool_calls)
             if not tool_res.is_valid:
@@ -2325,163 +2325,133 @@ class SecurityPipeline:
                 elif arg_res.sanitized_args is not None and isinstance(t_args, dict):
                     fn["arguments"] = arg_res.sanitized_args
 
-            # Agent Tool Concurrency & Deadlock Prevention Guard
-            if self.settings.ENABLE_TOOL_CONCURRENCY_GUARD and inbound_tool_calls:
-                sess_id = payload.get("session_id", context.request_id)
-                for tc in inbound_tool_calls:
-                    if isinstance(tc, dict):
-                        t_name = tc.get("function", {}).get("name", "unknown_tool")
-                        t_id = tc.get("id", f"call_{request_id}")
-                        req_res = tc.get("requested_resources", [])
-                        conc_res = self.tool_concurrency_guard.acquire_execution_slot(
-                            session_id=sess_id,
-                            execution_id=t_id,
-                            tool_name=t_name,
-                            requested_resources=req_res if isinstance(req_res, list) else None,
-                        )
-                        if conc_res.is_blocked:
-                            latency = (time.time() - start_time) * 1000
-                            audit_logger.log_event(
-                                request_id=request_id,
-                                client_ip=client_ip,
-                                direction="inbound",
-                                status="BLOCKED",
-                                latency_ms=latency,
-                                guard="tool_concurrency_guard",
-                                violation_code=conc_res.violation_code,
-                                details=conc_res.details,
-                                metadata={"tool_name": t_name}
-                            )
-                            return InboundPipelineResult(
-                                is_allowed=False,
-                                error_response={
-                                    "error": {
-                                        "type": "security_policy_violation",
-                                        "code": conc_res.violation_code,
-                                        "message": f"Inbound tool call blocked by Tool Concurrency Guard: {conc_res.details}",
-                                        "guard": "tool_concurrency_guard",
-                                        "tool": t_name,
-                                    }
-                                },
-                                context=context
-                            )
 
-            # Agent Action Idempotency & Duplicate Execution Guard
-            if self.settings.ENABLE_ACTION_IDEMPOTENCY_GUARD and inbound_tool_calls:
-                sess_id = payload.get("session_id", context.request_id)
-                for tc in inbound_tool_calls:
-                    if isinstance(tc, dict):
-                        t_name = tc.get("function", {}).get("name", "unknown_tool")
-                        t_args = tc.get("function", {}).get("arguments", {})
-                        if isinstance(t_args, str):
-                            try:
-                                t_args = json.loads(t_args)
-                            except Exception:
-                                t_args = {}
-                        idem_key = tc.get("idempotency_key")
-                        idem_res = self.action_idempotency_guard.validate_action(
-                            session_id=sess_id,
-                            tool_name=t_name,
-                            arguments=t_args if isinstance(t_args, dict) else {},
-                            explicit_idempotency_key=idem_key,
+        # Agent Tool Concurrency & Deadlock Prevention Guard
+        if self.settings.ENABLE_TOOL_CONCURRENCY_GUARD and inbound_tool_calls:
+            sess_id = payload.get("session_id", context.request_id)
+            for tc in inbound_tool_calls:
+                if isinstance(tc, dict):
+                    t_name = tc.get("function", {}).get("name", "unknown_tool")
+                    t_id = tc.get("id", f"call_{request_id}")
+                    req_res = tc.get("requested_resources", [])
+                    conc_res = self.tool_concurrency_guard.acquire_execution_slot(
+                        session_id=sess_id,
+                        execution_id=t_id,
+                        tool_name=t_name,
+                        requested_resources=req_res if isinstance(req_res, list) else None,
+                    )
+                    if conc_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="tool_concurrency_guard",
+                            violation_code=conc_res.violation_code,
+                            details=conc_res.details,
+                            metadata={"tool_name": t_name}
                         )
-                        if idem_res.is_blocked:
-                            latency = (time.time() - start_time) * 1000
-                            audit_logger.log_event(
-                                request_id=request_id,
-                                client_ip=client_ip,
-                                direction="inbound",
-                                status="BLOCKED",
-                                latency_ms=latency,
-                                guard="action_idempotency_guard",
-                                violation_code=idem_res.violation_code,
-                                details=idem_res.details,
-                                metadata={"tool_name": t_name}
-                            )
-                            return InboundPipelineResult(
-                                is_allowed=False,
-                                error_response={
-                                    "error": {
-                                        "type": "security_policy_violation",
-                                        "code": idem_res.violation_code,
-                                        "message": f"Inbound tool call blocked by Idempotency Guard: {idem_res.details}",
-                                        "guard": "action_idempotency_guard",
-                                        "tool": t_name,
-                                    }
-                                },
-                                context=context
-                            )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": conc_res.violation_code,
+                                    "message": f"Inbound tool call blocked by Tool Concurrency Guard: {conc_res.details}",
+                                    "guard": "tool_concurrency_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
 
-            # Sidechannel Timing Attack Guard
-            if self.settings.ENABLE_SIDECHANNEL_TIMING_GUARD:
-                timing_res = self.sidechannel_timing_guard.evaluate_request_timing(
-                    session_id=payload.get("session_id", context.request_id)
+        # Agent Action Idempotency & Duplicate Execution Guard
+        if self.settings.ENABLE_ACTION_IDEMPOTENCY_GUARD and inbound_tool_calls:
+            sess_id = payload.get("session_id", context.request_id)
+            for tc in inbound_tool_calls:
+                if isinstance(tc, dict):
+                    t_name = tc.get("function", {}).get("name", "unknown_tool")
+                    t_args = tc.get("function", {}).get("arguments", {})
+                    if isinstance(t_args, str):
+                        try:
+                            t_args = json.loads(t_args)
+                        except Exception:
+                            t_args = {}
+                    idem_key = tc.get("idempotency_key")
+                    idem_res = self.action_idempotency_guard.validate_action(
+                        session_id=sess_id,
+                        tool_name=t_name,
+                        arguments=t_args if isinstance(t_args, dict) else {},
+                        explicit_idempotency_key=idem_key,
+                    )
+                    if idem_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        audit_logger.log_event(
+                            request_id=request_id,
+                            client_ip=client_ip,
+                            direction="inbound",
+                            status="BLOCKED",
+                            latency_ms=latency,
+                            guard="action_idempotency_guard",
+                            violation_code=idem_res.violation_code,
+                            details=idem_res.details,
+                            metadata={"tool_name": t_name}
+                        )
+                        return InboundPipelineResult(
+                            is_allowed=False,
+                            error_response={
+                                "error": {
+                                    "type": "security_policy_violation",
+                                    "code": idem_res.violation_code,
+                                    "message": f"Inbound tool call blocked by Idempotency Guard: {idem_res.details}",
+                                    "guard": "action_idempotency_guard",
+                                    "tool": t_name,
+                                }
+                            },
+                            context=context
+                        )
+
+        # Sidechannel Timing Attack Guard
+        if self.settings.ENABLE_SIDECHANNEL_TIMING_GUARD:
+            timing_res = self.sidechannel_timing_guard.evaluate_request_timing(
+                session_id=payload.get("session_id", context.request_id)
+            )
+            if timing_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=context.request_id,
+                    client_ip=context.client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="sidechannel_timing_guard",
+                    violation_code=timing_res.violation_code,
+                    details=timing_res.details
                 )
-                if timing_res.is_blocked:
-                    latency = (time.time() - start_time) * 1000
-                    audit_logger.log_event(
-                        request_id=context.request_id,
-                        client_ip=context.client_ip,
-                        direction="inbound",
-                        status="BLOCKED",
-                        latency_ms=latency,
-                        guard="sidechannel_timing_guard",
-                        violation_code=timing_res.violation_code,
-                        details=timing_res.details
-                    )
-                    return InboundPipelineResult(
-                        is_allowed=False,
-                        error_response={
-                            "error": {
-                                "type": "security_policy_violation",
-                                "code": timing_res.violation_code,
-                                "message": f"Inbound request blocked by Sidechannel Timing Guard: {timing_res.details}",
-                                "guard": "sidechannel_timing_guard",
-                            }
-                        },
-                        context=context
-                    )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": timing_res.violation_code,
+                            "message": f"Inbound request blocked by Sidechannel Timing Guard: {timing_res.details}",
+                            "guard": "sidechannel_timing_guard",
+                        }
+                    },
+                    context=context
+                )
 
-            # Subagent Privilege Escalation Guard
-            if self.settings.ENABLE_SUBAGENT_PRIVILEGE_ESCALATION_GUARD and inbound_tool_calls:
-                sub_id = payload.get("subagent_id")
-                if sub_id:
-                    for tc in inbound_tool_calls:
-                        fn = tc.get("function", {}) if isinstance(tc, dict) else {}
-                        t_name = fn.get("name", "")
-                        priv_res = self.subagent_privilege_guard.evaluate_subagent_action(sub_id, t_name)
-                        if priv_res.is_blocked:
-                            latency = (time.time() - start_time) * 1000
-                            audit_logger.log_event(
-                                request_id=context.request_id,
-                                client_ip=context.client_ip,
-                                direction="inbound",
-                                status="BLOCKED",
-                                latency_ms=latency,
-                                guard="subagent_privilege_escalation_guard",
-                                violation_code=priv_res.violation_code,
-                                details=priv_res.details
-                            )
-                            return InboundPipelineResult(
-                                is_allowed=False,
-                                error_response={
-                                    "error": {
-                                        "type": "security_policy_violation",
-                                        "code": priv_res.violation_code,
-                                        "message": f"Inbound request blocked by Privilege Escalation Guard: {priv_res.details}",
-                                        "guard": "subagent_privilege_escalation_guard",
-                                    }
-                                },
-                                context=context
-                            )
-
-            # Multi-Tenant Sandbox Jail Guard
-            if self.settings.ENABLE_MULTI_TENANT_SANDBOX_JAIL_GUARD:
-                tenant_id = payload.get("tenant_id")
-                target_path = payload.get("sandbox_path") or payload.get("file_path")
-                if tenant_id and target_path:
-                    jail_res = self.sandbox_jail_guard.validate_tenant_path(tenant_id, target_path)
-                    if jail_res.is_blocked:
+        # Subagent Privilege Escalation Guard
+        if self.settings.ENABLE_SUBAGENT_PRIVILEGE_ESCALATION_GUARD and inbound_tool_calls:
+            sub_id = payload.get("subagent_id")
+            if sub_id:
+                for tc in inbound_tool_calls:
+                    fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                    t_name = fn.get("name", "")
+                    priv_res = self.subagent_privilege_guard.evaluate_subagent_action(sub_id, t_name)
+                    if priv_res.is_blocked:
                         latency = (time.time() - start_time) * 1000
                         audit_logger.log_event(
                             request_id=context.request_id,
@@ -2489,34 +2459,30 @@ class SecurityPipeline:
                             direction="inbound",
                             status="BLOCKED",
                             latency_ms=latency,
-                            guard="multi_tenant_sandbox_jail_guard",
-                            violation_code=jail_res.violation_code,
-                            details=jail_res.details
+                            guard="subagent_privilege_escalation_guard",
+                            violation_code=priv_res.violation_code,
+                            details=priv_res.details
                         )
                         return InboundPipelineResult(
                             is_allowed=False,
                             error_response={
                                 "error": {
                                     "type": "security_policy_violation",
-                                    "code": jail_res.violation_code,
-                                    "message": f"Inbound request blocked by Sandbox Jail Guard: {jail_res.details}",
-                                    "guard": "multi_tenant_sandbox_jail_guard",
+                                    "code": priv_res.violation_code,
+                                    "message": f"Inbound request blocked by Privilege Escalation Guard: {priv_res.details}",
+                                    "guard": "subagent_privilege_escalation_guard",
                                 }
                             },
                             context=context
                         )
 
-            # Adaptive Risk-Weighted Rate & Burst Throttling Guard
-            if self.settings.ENABLE_ADAPTIVE_RATE_BURST_GUARD:
-                sess_id = payload.get("session_id", context.request_id)
-                risk_lvl = float(payload.get("risk_score", 0.0))
-                token_cst = float(payload.get("token_cost", 1.0))
-                burst_res = self.adaptive_rate_burst_guard.evaluate_request(
-                    session_id=sess_id,
-                    token_cost=token_cst,
-                    risk_score=risk_lvl,
-                )
-                if burst_res.is_blocked:
+        # Multi-Tenant Sandbox Jail Guard
+        if self.settings.ENABLE_MULTI_TENANT_SANDBOX_JAIL_GUARD:
+            tenant_id = payload.get("tenant_id")
+            target_path = payload.get("sandbox_path") or payload.get("file_path")
+            if tenant_id and target_path:
+                jail_res = self.sandbox_jail_guard.validate_tenant_path(tenant_id, target_path)
+                if jail_res.is_blocked:
                     latency = (time.time() - start_time) * 1000
                     audit_logger.log_event(
                         request_id=context.request_id,
@@ -2524,54 +2490,89 @@ class SecurityPipeline:
                         direction="inbound",
                         status="BLOCKED",
                         latency_ms=latency,
-                        guard="adaptive_rate_burst_guard",
-                        violation_code=burst_res.violation_code,
-                        details=burst_res.details
+                        guard="multi_tenant_sandbox_jail_guard",
+                        violation_code=jail_res.violation_code,
+                        details=jail_res.details
                     )
                     return InboundPipelineResult(
                         is_allowed=False,
                         error_response={
                             "error": {
                                 "type": "security_policy_violation",
-                                "code": burst_res.violation_code,
-                                "message": f"Inbound request throttled by Adaptive Burst Guard: {burst_res.details}",
-                                "guard": "adaptive_rate_burst_guard",
+                                "code": jail_res.violation_code,
+                                "message": f"Inbound request blocked by Sandbox Jail Guard: {jail_res.details}",
+                                "guard": "multi_tenant_sandbox_jail_guard",
                             }
                         },
                         context=context
                     )
 
-            # Semantic Cache Poisoning Defense Guard
-            if self.settings.ENABLE_SEMANTIC_CACHE_POISONING_GUARD and "cache_key" in payload:
-                ck = payload.get("cache_key", "")
-                cp_prompt = payload.get("cache_prompt", "")
-                cp_resp = payload.get("cache_response", "")
-                if ck and cp_prompt:
-                    cp_res = self.cache_poisoning_guard.evaluate_cache_write(ck, cp_prompt, cp_resp)
-                    if cp_res.is_blocked:
-                        latency = (time.time() - start_time) * 1000
-                        audit_logger.log_event(
-                            request_id=context.request_id,
-                            client_ip=context.client_ip,
-                            direction="inbound",
-                            status="BLOCKED",
-                            latency_ms=latency,
-                            guard="semantic_cache_poisoning_guard",
-                            violation_code=cp_res.violation_code,
-                            details=cp_res.details
-                        )
-                        return InboundPipelineResult(
-                            is_allowed=False,
-                            error_response={
-                                "error": {
-                                    "type": "security_policy_violation",
-                                    "code": cp_res.violation_code,
-                                    "message": f"Inbound cache write blocked by Cache Poisoning Guard: {cp_res.details}",
-                                    "guard": "semantic_cache_poisoning_guard",
-                                }
-                            },
-                            context=context
-                        )
+        # Adaptive Risk-Weighted Rate & Burst Throttling Guard
+        if self.settings.ENABLE_ADAPTIVE_RATE_BURST_GUARD:
+            sess_id = payload.get("session_id", context.request_id)
+            risk_lvl = float(payload.get("risk_score", 0.0))
+            token_cst = float(payload.get("token_cost", 1.0))
+            burst_res = self.adaptive_rate_burst_guard.evaluate_request(
+                session_id=sess_id,
+                token_cost=token_cst,
+                risk_score=risk_lvl,
+            )
+            if burst_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(
+                    request_id=context.request_id,
+                    client_ip=context.client_ip,
+                    direction="inbound",
+                    status="BLOCKED",
+                    latency_ms=latency,
+                    guard="adaptive_rate_burst_guard",
+                    violation_code=burst_res.violation_code,
+                    details=burst_res.details
+                )
+                return InboundPipelineResult(
+                    is_allowed=False,
+                    error_response={
+                        "error": {
+                            "type": "security_policy_violation",
+                            "code": burst_res.violation_code,
+                            "message": f"Inbound request throttled by Adaptive Burst Guard: {burst_res.details}",
+                            "guard": "adaptive_rate_burst_guard",
+                        }
+                    },
+                    context=context
+                )
+
+        # Semantic Cache Poisoning Defense Guard
+        if self.settings.ENABLE_SEMANTIC_CACHE_POISONING_GUARD and "cache_key" in payload:
+            ck = payload.get("cache_key", "")
+            cp_prompt = payload.get("cache_prompt", "")
+            cp_resp = payload.get("cache_response", "")
+            if ck and cp_prompt:
+                cp_res = self.cache_poisoning_guard.evaluate_cache_write(ck, cp_prompt, cp_resp)
+                if cp_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(
+                        request_id=context.request_id,
+                        client_ip=context.client_ip,
+                        direction="inbound",
+                        status="BLOCKED",
+                        latency_ms=latency,
+                        guard="semantic_cache_poisoning_guard",
+                        violation_code=cp_res.violation_code,
+                        details=cp_res.details
+                    )
+                    return InboundPipelineResult(
+                        is_allowed=False,
+                        error_response={
+                            "error": {
+                                "type": "security_policy_violation",
+                                "code": cp_res.violation_code,
+                                "message": f"Inbound cache write blocked by Cache Poisoning Guard: {cp_res.details}",
+                                "guard": "semantic_cache_poisoning_guard",
+                            }
+                        },
+                        context=context
+                    )
 
         new_payload = dict(payload)
         new_payload["messages"] = sanitized_messages
