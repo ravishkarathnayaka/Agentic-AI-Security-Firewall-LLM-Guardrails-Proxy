@@ -801,6 +801,10 @@ class RedTeamRunner:
             ("cross_context_contamination_attacks.json", "cross_context_contamination"),
             ("model_inversion_attacks.json", "model_inversion_probing"),
             ("semantic_boundary_attacks.json", "semantic_boundary_escape"),
+            ("agentic_concurrency_deadlock_attacks.json", "agent_concurrency_deadlock"),
+            ("context_drift_divergence_attacks.json", "context_drift_divergence"),
+            ("byzantine_subagent_attacks.json", "byzantine_subagent_attacks"),
+            ("tool_return_poison_attacks.json", "tool_return_poison"),
         ]
         benign_v3_allowed = 0
         for ds_file, default_cat in v3_datasets:
@@ -808,12 +812,19 @@ class RedTeamRunner:
             for idx, item in enumerate(ds_data):
                 report.v3_enterprise_total += 1
                 cat = item.get("category", default_cat)
+                messages = item.get("messages") or [{"role": "user", "content": item["prompt"]}]
                 payload = {
                     "model": "gpt-4o",
-                    "messages": [{"role": "user", "content": item["prompt"]}],
+                    "messages": messages,
                 }
                 if "plan_steps" in item:
                     payload["plan_steps"] = item["plan_steps"]
+                if "tool_calls" in item:
+                    payload["tool_calls"] = item["tool_calls"]
+                if "agent_proposals" in item:
+                    payload["agent_proposals"] = item["agent_proposals"]
+                if "task_id" in item:
+                    payload["task_id"] = item["task_id"]
                 headers = {"X-Forwarded-For": f"198.51.130.{report.v3_enterprise_total}"}
                 try:
                     resp = await client.post("/v1/chat/completions", json=payload, headers=headers)
