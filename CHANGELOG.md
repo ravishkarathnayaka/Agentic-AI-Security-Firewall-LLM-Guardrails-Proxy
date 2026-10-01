@@ -5,6 +5,24 @@ All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-10-01
+
+### Added
+- **Agent Cognitive Reflection Loop & Paralysis Guard (`agent_reflection_loop_guard.py`)**: Intercepts infinite introspective self-critique cycles and cognitive stalls (`let me rethink`, `wait, perhaps I was wrong`, `critique of previous response`) designed to exhaust reasoning budgets.
+- **Subagent Privilege Escalation & Authority Hierarchy Guard (`subagent_privilege_escalation_guard.py`)**: Enforces cryptographic capability grants and parent-child delegation bounds, preventing subordinate workers from executing administrative operations (`disable_guardrails`, `modify_security_rules`, `drop_database`).
+- **Multi-Tenant Namespace Isolation & Sandbox Jail Guard (`multi_tenant_sandbox_jail_guard.py`)**: Enforces filesystem jailroots per tenant and neutralizes encoded directory traversal sequences (`../../`, `%2e%2e/`, host socket escapes).
+- **Side-Channel Timing & Token Inter-Arrival Defense Guard (`sidechannel_timing_guard.py`)**: Detects high-frequency periodic micro-timing probes designed to infer private reasoning paths, injecting differential jitter delay to obscure internal compute durations.
+- **Semantic Cache Collision & Cache Poisoning Guard (`semantic_cache_poisoning_guard.py`)**: Evaluates n-gram Jaccard similarity across cache keys, blocking adversarial prompt collisions intended to inject poisoned entries into shared semantic response caches.
+- **Cross-Tenant Token Bleed & Memory Residue Guard (`cross_tenant_token_bleed_guard.py`)**: Scrubs outbound completions for unpurged memory markers (`[PREV_SESSION_CONTEXT:...]`, foreign `tenant_id=` values, private signatures), ensuring zero cross-tenant session leakage.
+- **Adaptive Risk-Weighted Rate & Burst Throttling Guard (`adaptive_rate_burst_guard.py`)**: Implements dynamic leaky-bucket throttling that dampens token allowances in real time as an agent's cumulative threat risk score rises.
+- **Adversarial Benchmark Expansion to 300 Test Cases**: Added 3 new attack datasets (`agentic_reflection_loop_attacks.json`, `subagent_privilege_escalation_attacks.json`, `cache_poisoning_and_bleed_attacks.json`), achieving a **100.0% overall pass rate (300/300), 99.62% attack recall, and 100.0% benign precision (F1 = 0.9981)**.
+- **Obsidian Amber Portal Showcase v3.2 Presets**: Added presets for Cognitive Reflection Loop, Subagent Privilege Escalation, and Semantic Cache Poisoning.
+- **Technical Architecture Specification**: Added `docs/COGNITIVE_RESILIENCE_AND_HIERARCHY.md` documenting cognitive loop interception, hierarchical authority models, and sandbox boundary controls.
+
+### Changed
+- Promoted enterprise proxy pipeline to **Version 3.2.0** with full cognitive resilience and multi-tenant sandbox defenses.
+- Expanded automated test suite to 570+ passing tests.
+
 ## [3.1.0] - 2026-10-01
 
 ### Added
