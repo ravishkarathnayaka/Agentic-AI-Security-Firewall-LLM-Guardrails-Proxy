@@ -503,7 +503,7 @@ class SecurityPipeline:
                     m.get("content", "") for m in drift_msgs if isinstance(m, dict) and isinstance(m.get("content"), str)
                 )
                 if drift_sample:
-                    drift_res = self.context_drift_guard.track_drift(drift_sess, drift_sample)
+                    drift_res = self.context_drift_guard.record_and_evaluate_turn(drift_sess, drift_sample)
                     if drift_res.is_blocked:
                         latency = (time.time() - start_time) * 1000
                         audit_logger.log_event(
@@ -2324,7 +2324,7 @@ class SecurityPipeline:
                             tool_name=t_name,
                             requested_resources=req_res if isinstance(req_res, list) else None,
                         )
-                        if not conc_res.is_allowed:
+                        if conc_res.is_blocked:
                             latency = (time.time() - start_time) * 1000
                             audit_logger.log_event(
                                 request_id=request_id,
