@@ -81,7 +81,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "llm_security_guardrails_proxy",
-        "version": "3.1.0",
+        "version": "3.2.0",
         "upstream_url": settings.UPSTREAM_LLM_URL,
         "guards": {
             "prompt_injection_guard": settings.ENABLE_PROMPT_INJECTION_GUARD,
