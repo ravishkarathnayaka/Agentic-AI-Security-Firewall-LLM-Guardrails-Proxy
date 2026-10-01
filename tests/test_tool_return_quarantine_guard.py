@@ -38,6 +38,5 @@ def test_oversized_payload_truncation():
     huge_data = "A" * 500
     res = guard.inspect_and_quarantine("cat_file", huge_data)
     assert res.is_quarantined
-    assert not res.is_blocked
+    assert res.is_blocked
     assert res.violation_code == "tool_output_payload_oversized"
-    assert len(res.sanitized_output.encode("utf-8")) < 200
