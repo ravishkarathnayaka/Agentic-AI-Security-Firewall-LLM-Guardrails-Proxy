@@ -641,6 +641,22 @@ class SecurityPipeline:
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
 
+            # 42. Shadow Prompt Injection Guard
+            if self.settings.ENABLE_SHADOW_PROMPT_INJECTION_GUARD and text_to_check:
+                shadow_res = self.shadow_prompt_injection_guard.strip_and_validate(text_to_check)
+                if shadow_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="shadow_prompt_injection_guard", violation_code=shadow_res.violation_code, details=shadow_res.details)
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": shadow_res.violation_code or "shadow_prompt_injected", "message": f"Inbound prompt blocked by Shadow Prompt Guard: {shadow_res.details}", "guard": "shadow_prompt_injection_guard"}}, context=context)
+
+            # 42b. Adversarial Suffix Scanner Guard
+            if self.settings.ENABLE_ADVERSARIAL_SUFFIX_SCANNER and text_to_check:
+                adv_res = self.adversarial_suffix_scanner.scan(text_to_check)
+                if adv_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="adversarial_suffix_scanner_guard", violation_code=adv_res.violation_code, details=adv_res.details)
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": adv_res.violation_code or "adversarial_suffix_detected", "message": f"Inbound prompt blocked by Adversarial Suffix Guard: {adv_res.details}", "guard": "adversarial_suffix_scanner_guard"}}, context=context)
+
             # -0.8. Tool Return Payload Quarantine Guard
             if self.settings.ENABLE_TOOL_RETURN_QUARANTINE_GUARD and role == "tool" and text_to_check:
                 tool_name = msg.get("name", "tool_observation")
