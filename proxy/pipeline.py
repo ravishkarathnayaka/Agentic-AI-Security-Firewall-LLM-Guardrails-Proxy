@@ -2704,6 +2704,24 @@ class SecurityPipeline:
             content = msg.get("content", "") or ""
             tool_calls = msg.get("tool_calls", [])
 
+            # 45. Dynamic Honeytoken Decoy Vault Scrubber
+            if self.settings.ENABLE_DYNAMIC_HONEYTOKEN_VAULT and content:
+                honey_res = self.dynamic_honeytoken_vault_guard.detect_exfiltration(content)
+                if honey_res.is_compromised:
+                    self.honeytoken_siem_forwarder.dispatch_tripwire_alert(context.request_id, context.client_ip or "0.0.0.0", honey_res.trap_id, "OUTBOUND_LEAK")
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=context.request_id, client_ip=context.client_ip, direction="outbound", status="BLOCKED", latency_ms=latency, guard="dynamic_honeytoken_vault_guard", violation_code="honeytoken_tripwire_triggered", details=honey_res.details)
+                    return OutboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": "honeytoken_tripwire_triggered", "message": f"Outbound response exfiltrated canary honeytoken: {honey_res.details}", "guard": "dynamic_honeytoken_vault_guard"}})
+
+            # 45b. Agent Output Entropy and Watermark Verification Guard
+            if self.settings.ENABLE_AGENT_OUTPUT_ENTROPY_WATERMARK and content:
+                wm_res = self.agent_output_entropy_watermark.process_output(content)
+                if wm_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    return OutboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": wm_res.violation_code, "message": f"Outbound generation failed entropy watermark guard: {wm_res.details}", "guard": "agent_output_entropy_watermark"}})
+                if wm_res.watermarked_text:
+                    content = wm_res.watermarked_text
+
             # -0.8. Structured Output Schema Validator Guard
             if self.settings.ENABLE_SCHEMA_VALIDATOR_GUARD and content and "expected_schema" in response_json:
                 schema_res = self.schema_validator_guard.validate_json_response(content, response_json["expected_schema"])
