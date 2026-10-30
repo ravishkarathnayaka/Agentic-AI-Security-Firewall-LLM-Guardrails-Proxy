@@ -1,3 +1,26 @@
+## [4.0.0] - 2026-10-30 - Autonomous Cognitive Defense & Quantum-Safe Zero Trust Architecture
+
+### Added
+- **Quantum-Safe Signature Guard**: Lattice-based payload integrity verification and SHA3-512 non-repudiation.
+- **Dynamic Honeytoken Deception Vault**: Active synthetic decoy tripwires detecting credential exfiltration in outbound streams.
+- **Agent Sycophancy & Delusion Coercion Defense**: Blocks manipulative flattery and forced reality distortion attacks.
+- **Shadow Prompt Injection & Tag Stripper**: Intercepts invisible Unicode tag characters (U+E0001 - U+E007E) smuggling commands.
+- **Epistemic Drift & Belief Corruption Tracker**: Monitors semantic trajectory consistency across multi-turn reasoning cycles.
+- **Cross-Agent Covert Channel Guard**: Scans for zero-width steganography and whitespace modulation between agents.
+- **Agent State Checkpoint & Micro-Rollback**: Transactional state persistence and rapid recovery on policy breach.
+- **Differential Multi-Perspective Ensemble Guard**: Cross-examines prompts from diverse adversarial evaluation viewpoints.
+- **LLM Memory Fabric Sanitizer**: Defends RAG vector stores and persistent episodic memory from poisoning attacks.
+- **Agent Subgoal Divergence Guard**: Validates multi-step planning sequences against user primary intent.
+- **Agent Tool Parameter Fuzzer**: Validates parameter safety against command injection, path traversal, and SQL probes.
+- **Contextual Integrity Boundary Guard**: Enforces privacy norms on cross-domain agent data transfers.
+- **Adversarial Suffix Scanner**: Mitigates Greedy Coordinate Gradient (GCG) and AutoDAN jailbreak suffixes.
+- **Agent Output Entropy & Watermark Guard**: Halts degenerate hallucination loops and embeds zero-width origin marks.
+- **Behavioral Anomaly Governor**: Dynamic token velocity tracking and runaway agent execution loop breaker.
+- **Quantum Audit Signer & SIEM Alert Forwarder**: Tamper-evident Merkle telemetry chain with SIEM dispatching.
+- **366-Vector Benchmark Suite**: Expanded coverage with 6 new attack categories and 100% defense recall.
+
+---
+
 # Changelog
 
 All notable changes to the **Agentic AI Security Firewall & LLM Guardrails Proxy** project will be documented in this file.
