@@ -267,6 +267,18 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # 44b. Quantum-Safe Payload Signature Verification
+        if self.settings.ENABLE_QUANTUM_SAFE_SIGNATURE_GUARD and "quantum_signature" in payload:
+            sig_val = payload.get("quantum_signature")
+            sample_p = ""
+            for m in payload.get("messages", []):
+                if isinstance(m, dict) and isinstance(m.get("content"), str):
+                    sample_p += m.get("content")
+            sig_valid, sig_err = self.quantum_safe_signature_guard.verify_payload_signature(sample_p, sig_val)
+            if not sig_valid:
+                latency = (time.time() - start_time) * 1000
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": "quantum_signature_verification_failed", "message": f"Inbound request blocked by Quantum Signature Guard: {sig_err}", "guard": "quantum_safe_signature_guard"}}, context=context)
+
         # -1. Network Perimeter & CIDR Blocklist Check
         if self.settings.ENABLE_NETWORK_PERIMETER_GUARD and client_ip:
             is_net_blocked, net_reason = self.network_guard.check_ip(client_ip)
@@ -640,6 +652,14 @@ class SecurityPipeline:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
+
+            # 44. Memory Fabric Sanitizer Guard
+            if self.settings.ENABLE_LLM_MEMORY_FABRIC_SANITIZER and text_to_check:
+                mem_res = self.llm_memory_fabric_sanitizer_guard.scan_memory_entry(text_to_check)
+                if mem_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="llm_memory_fabric_sanitizer_guard", violation_code=mem_res.violation_code, details=mem_res.details)
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": mem_res.violation_code or "memory_fabric_poisoning", "message": f"Inbound memory chunk blocked by Memory Sanitizer Guard: {mem_res.details}", "guard": "llm_memory_fabric_sanitizer_guard"}}, context=context)
 
             # 43. Agent Sycophancy & Delusion Coercion Guard
             if self.settings.ENABLE_AGENT_SYCOPHANCY_GUARD and text_to_check:
