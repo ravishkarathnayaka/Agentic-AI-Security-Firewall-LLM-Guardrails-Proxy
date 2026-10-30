@@ -1,4 +1,6 @@
-"""Automated Adversarial Red-Teaming Fuzzer Runner."""
+"""Automated Adversarial Red-Teaming Fuzzer Runner.
+Includes v4.0 360-case benchmark support across cognitive defense tiers.
+"""
 
 import asyncio
 import json
