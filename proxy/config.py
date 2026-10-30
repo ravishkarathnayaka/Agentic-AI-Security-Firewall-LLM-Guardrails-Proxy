@@ -371,6 +371,22 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable adaptive risk-weighted rate and burst throttling guard"
     )
+    ENABLE_QUANTUM_SAFE_SIGNATURE_GUARD: bool = Field(
+        default=True,
+        description="Enable post-quantum cryptographic signature & lattice verification guard"
+    )
+    ENABLE_DYNAMIC_HONEYTOKEN_VAULT_GUARD: bool = Field(
+        default=True,
+        description="Enable dynamic honeytoken decoy vault & intrusion detection guard"
+    )
+    ENABLE_AGENT_SYCOPHANCY_GUARD: bool = Field(
+        default=True,
+        description="Enable agent sycophancy & delusion coercion defense guard"
+    )
+    ENABLE_SHADOW_PROMPT_INJECTION_GUARD: bool = Field(
+        default=True,
+        description="Enable shadow prompt injection & invisible tag character guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
