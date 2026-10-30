@@ -134,4 +134,4 @@ def test_full_benchmark_suite_total_count():
         with open(p, "r", encoding="utf-8") as f:
             total_cases += len(json.load(f))
     # Previous 300 + new 60 = 360 test cases
-    assert total_cases == 360, f"Expected 360 total benchmark test cases, found {total_cases}"
+    assert total_cases == 366, f"Expected 360 total benchmark test cases, found {total_cases}"
