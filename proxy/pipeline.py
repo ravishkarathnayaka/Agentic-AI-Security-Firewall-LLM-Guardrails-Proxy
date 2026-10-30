@@ -93,6 +93,23 @@ from proxy.guards.subagent_privilege_escalation_guard import SubagentPrivilegeEs
 from proxy.guards.semantic_cache_poisoning_guard import SemanticCachePoisoningGuard
 from proxy.guards.cross_tenant_token_bleed_guard import CrossTenantTokenBleedGuard
 from proxy.guards.adaptive_rate_burst_guard import AdaptiveRateBurstGuard
+from proxy.guards.quantum_safe_signature_guard import QuantumSafeSignatureGuard
+from proxy.guards.dynamic_honeytoken_vault_guard import DynamicHoneytokenVaultGuard
+from proxy.guards.agent_sycophancy_guard import AgentSycophancyGuard
+from proxy.guards.shadow_prompt_injection_guard import ShadowPromptInjectionGuard
+from proxy.guards.agent_epistemic_drift_tracker import AgentEpistemicDriftTracker
+from proxy.guards.cross_agent_covert_channel_guard import CrossAgentCovertChannelGuard
+from proxy.guards.agent_state_checkpoint_rollback_guard import AgentStateCheckpointRollbackGuard
+from proxy.guards.prompt_injection_differential_ensemble_guard import PromptInjectionDifferentialEnsembleGuard
+from proxy.guards.llm_memory_fabric_sanitizer_guard import LLMMemoryFabricSanitizerGuard
+from proxy.guards.agent_subgoal_divergence_guard import AgentSubgoalDivergenceGuard
+from proxy.guards.agent_tool_parameter_fuzzer_guard import AgentToolParameterFuzzerGuard
+from proxy.guards.contextual_integrity_boundary_guard import ContextualIntegrityBoundaryGuard
+from proxy.guards.adversarial_suffix_scanner_guard import AdversarialSuffixScannerGuard
+from proxy.guards.agent_output_entropy_watermark_guard import AgentOutputEntropyWatermarkGuard
+from proxy.guards.behavioral_anomaly_governor_guard import BehavioralAnomalyGovernorGuard
+from proxy.telemetry.quantum_audit_signer import QuantumAuditSigner
+from proxy.telemetry.honeytoken_intrusion_forwarder import HoneytokenIntrusionForwarder
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -217,6 +234,23 @@ class SecurityPipeline:
         self.cache_poisoning_guard = SemanticCachePoisoningGuard()
         self.token_bleed_guard = CrossTenantTokenBleedGuard()
         self.adaptive_rate_burst_guard = AdaptiveRateBurstGuard()
+        self.quantum_safe_signature_guard = QuantumSafeSignatureGuard()
+        self.dynamic_honeytoken_vault_guard = DynamicHoneytokenVaultGuard()
+        self.agent_sycophancy_guard = AgentSycophancyGuard()
+        self.shadow_prompt_injection_guard = ShadowPromptInjectionGuard()
+        self.agent_epistemic_drift_tracker = AgentEpistemicDriftTracker()
+        self.cross_agent_covert_channel_guard = CrossAgentCovertChannelGuard()
+        self.agent_state_checkpoint_rollback_guard = AgentStateCheckpointRollbackGuard()
+        self.prompt_injection_ensemble_guard = PromptInjectionDifferentialEnsembleGuard()
+        self.llm_memory_fabric_sanitizer_guard = LLMMemoryFabricSanitizerGuard()
+        self.agent_subgoal_divergence_guard = AgentSubgoalDivergenceGuard()
+        self.agent_tool_parameter_fuzzer_guard = AgentToolParameterFuzzerGuard()
+        self.contextual_integrity_guard = ContextualIntegrityBoundaryGuard()
+        self.adversarial_suffix_scanner = AdversarialSuffixScannerGuard()
+        self.agent_output_entropy_watermark = AgentOutputEntropyWatermarkGuard()
+        self.behavioral_anomaly_governor = BehavioralAnomalyGovernorGuard()
+        self.quantum_audit_signer = QuantumAuditSigner()
+        self.honeytoken_siem_forwarder = HoneytokenIntrusionForwarder()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
