@@ -387,6 +387,22 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable shadow prompt injection & invisible tag character guard"
     )
+    ENABLE_AGENT_EPISTEMIC_DRIFT_TRACKER: bool = Field(
+        default=True,
+        description="Enable agent epistemic drift & belief corruption tracker"
+    )
+    ENABLE_CROSS_AGENT_COVERT_CHANNEL_GUARD: bool = Field(
+        default=True,
+        description="Enable cross-agent covert channel & steganography detection guard"
+    )
+    ENABLE_AGENT_STATE_CHECKPOINT_ROLLBACK_GUARD: bool = Field(
+        default=True,
+        description="Enable agent state checkpoint & micro-rollback guard"
+    )
+    ENABLE_PROMPT_INJECTION_ENSEMBLE_GUARD: bool = Field(
+        default=True,
+        description="Enable differential multi-perspective prompt injection ensemble guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
