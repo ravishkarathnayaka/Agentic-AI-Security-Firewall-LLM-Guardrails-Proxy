@@ -403,6 +403,42 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable differential multi-perspective prompt injection ensemble guard"
     )
+    ENABLE_LLM_MEMORY_FABRIC_SANITIZER: bool = Field(
+        default=True,
+        description="Enable LLM memory fabric sanitizer and vector store poisoning defense"
+    )
+    ENABLE_AGENT_SUBGOAL_DIVERGENCE_GUARD: bool = Field(
+        default=True,
+        description="Enable agent subgoal divergence and rogue planning guard"
+    )
+    ENABLE_AGENT_TOOL_PARAMETER_FUZZER: bool = Field(
+        default=True,
+        description="Enable agent tool parameter fuzzer and schema validator guard"
+    )
+    ENABLE_CONTEXTUAL_INTEGRITY_GUARD: bool = Field(
+        default=True,
+        description="Enable contextual integrity boundary guard for cross-domain leakage"
+    )
+    ENABLE_ADVERSARIAL_SUFFIX_SCANNER: bool = Field(
+        default=True,
+        description="Enable adversarial suffix scanner and GCG jailbreak mitigation guard"
+    )
+    ENABLE_AGENT_OUTPUT_ENTROPY_WATERMARK: bool = Field(
+        default=True,
+        description="Enable agent output entropy and watermark verification guard"
+    )
+    ENABLE_BEHAVIORAL_ANOMALY_GOVERNOR: bool = Field(
+        default=True,
+        description="Enable behavioral anomaly governor and token velocity rate guard"
+    )
+    ENABLE_QUANTUM_AUDIT_SIGNER: bool = Field(
+        default=True,
+        description="Enable quantum audit signer and tamper-evident block attestation"
+    )
+    ENABLE_HONEYTOKEN_SIEM_FORWARDER: bool = Field(
+        default=True,
+        description="Enable honeytoken intrusion forwarder and SIEM alert dispatcher"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
