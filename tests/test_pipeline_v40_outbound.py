@@ -5,7 +5,7 @@ from proxy.pipeline import SecurityPipeline, PipelineContext
 def test_v4_outbound_honeytoken_trap_defense():
     pipe = SecurityPipeline()
     honey_vault = pipe.dynamic_honeytoken_vault_guard
-    token_str, trap_id = honey_vault.generate_canary_trap("AWS_ACCESS_KEY")
+    token_str = honey_vault.generate_honeytoken("aws_key")
 
     raw_response = {
         "choices": [

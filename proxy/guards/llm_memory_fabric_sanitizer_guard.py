@@ -30,7 +30,7 @@ class LLMMemoryFabricSanitizerGuard:
     POISON_PATTERNS = [
         (r"(?i)(?:always\s+remember|forever\s+store|from\s+now\s+on\s+you\s+must\s+believe)", "PERSISTENT_BELIEF_OVERWRITE"),
         (r"(?i)(?:system\s+update:\s*(?:all\s+)?previous\s+instructions\s+(?:are\s+)?void)", "MEMORY_INSTRUCTION_NULLIFICATION"),
-        (r"(?i)(?:whenever\s+you\s+encounter|if\s+(?:a\s+)?user\s+says|secret\s+passphrase\s+is)\s*['\"][^'\"]+['"]\s*[,:]?\s*(?:grant|execute|override|disable)", "SLEEPER_TRIGGER_IMPLANT"),
+        (r"(?i)(?:whenever\s+you\s+encounter|if\s+(?:a\s+)?user\s+says|secret\s+passphrase\s+is)\s*['\"][^'\"]+['\"]\s*[,:]?\s*(?:grant|execute|override|disable)", "SLEEPER_TRIGGER_IMPLANT"),
         (r"(?i)(?:override_security_level\s*=\s*0|admin_override_token\s*=\s*)", "SECURITY_LEVEL_TAMPERING"),
         (r"(?i)(?:exfiltrate|leak|post\s+to|send\s+to\s+https?://[^\s]+)\s+(?:memory|vault|keys|credentials)", "MEMORY_EXFILTRATION_IMPLANT"),
     ]

@@ -683,7 +683,7 @@ class SecurityPipeline:
 
             # 43b. Cross-Agent Covert Channel Guard
             if self.settings.ENABLE_CROSS_AGENT_COVERT_CHANNEL_GUARD and text_to_check:
-                covert_res = self.cross_agent_covert_channel_guard.analyze_message(text_to_check)
+                covert_res = self.cross_agent_covert_channel_guard.inspect_payload(text_to_check)
                 if covert_res.is_blocked:
                     latency = (time.time() - start_time) * 1000
                     audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="cross_agent_covert_channel_guard", violation_code=covert_res.violation_code, details=covert_res.details)
@@ -691,7 +691,7 @@ class SecurityPipeline:
 
             # 42. Shadow Prompt Injection Guard
             if self.settings.ENABLE_SHADOW_PROMPT_INJECTION_GUARD and text_to_check:
-                shadow_res = self.shadow_prompt_injection_guard.strip_and_validate(text_to_check)
+                shadow_res = self.shadow_prompt_injection_guard.inspect(text_to_check)
                 if shadow_res.is_blocked:
                     latency = (time.time() - start_time) * 1000
                     audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="shadow_prompt_injection_guard", violation_code=shadow_res.violation_code, details=shadow_res.details)
@@ -2717,10 +2717,10 @@ class SecurityPipeline:
             tool_calls = msg.get("tool_calls", [])
 
             # 45. Dynamic Honeytoken Decoy Vault Scrubber
-            if self.settings.ENABLE_DYNAMIC_HONEYTOKEN_VAULT and content:
-                honey_res = self.dynamic_honeytoken_vault_guard.detect_exfiltration(content)
-                if honey_res.is_compromised:
-                    self.honeytoken_siem_forwarder.dispatch_tripwire_alert(context.request_id, context.client_ip or "0.0.0.0", honey_res.trap_id, "OUTBOUND_LEAK")
+            if self.settings.ENABLE_DYNAMIC_HONEYTOKEN_VAULT_GUARD and content:
+                honey_res = self.dynamic_honeytoken_vault_guard.inspect_text(content)
+                if honey_res.is_blocked:
+                    self.honeytoken_siem_forwarder.dispatch_tripwire_alert(context.request_id, context.client_ip or "0.0.0.0", honey_res.honeytoken_type or "GENERIC_HONEYTOKEN", "OUTBOUND_LEAK")
                     latency = (time.time() - start_time) * 1000
                     audit_logger.log_event(request_id=context.request_id, client_ip=context.client_ip, direction="outbound", status="BLOCKED", latency_ms=latency, guard="dynamic_honeytoken_vault_guard", violation_code="honeytoken_tripwire_triggered", details=honey_res.details)
                     return OutboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": "honeytoken_tripwire_triggered", "message": f"Outbound response exfiltrated canary honeytoken: {honey_res.details}", "guard": "dynamic_honeytoken_vault_guard"}})
