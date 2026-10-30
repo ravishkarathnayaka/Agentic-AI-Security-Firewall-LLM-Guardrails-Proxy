@@ -267,6 +267,18 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # 46. Behavioral Anomaly Governor & Quantum Audit Attestation
+        if self.settings.ENABLE_BEHAVIORAL_ANOMALY_GOVERNOR and ("session_id" in payload or "messages" in payload):
+            sess_key = payload.get("session_id", client_ip or "default_session")
+            p_len = sum(len(m.get("content", "").split()) for m in payload.get("messages", []) if isinstance(m, dict) and isinstance(m.get("content"), str))
+            gov_res = self.behavioral_anomaly_governor.record_and_evaluate(sess_key, token_count=p_len, tool_call_count=1 if "tools" in payload else 0)
+            if gov_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": gov_res.violation_code or "behavioral_velocity_exceeded", "message": f"Inbound request blocked by Behavioral Governor: {gov_res.details}", "guard": "behavioral_anomaly_governor_guard"}}, context=context)
+
+        if self.settings.ENABLE_QUANTUM_AUDIT_SIGNER:
+            self.quantum_audit_signer.attest_event(request_id, "INBOUND_SCAN", "PROCESSED", 0.0, [])
+
         # 44b. Quantum-Safe Payload Signature Verification
         if self.settings.ENABLE_QUANTUM_SAFE_SIGNATURE_GUARD and "quantum_signature" in payload:
             sig_val = payload.get("quantum_signature")
