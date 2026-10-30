@@ -1101,3 +1101,11 @@ document.addEventListener("DOMContentLoaded", () => {
   function notifyHoneytokenTrip(trapId, tokenType) {
     console.warn(`[SECURITY ALERT] Decoy tripwire tripped: ${trapId} (${tokenType})`);
   }
+
+  // v4 Cognitive Drift Trajectory Renderer
+  function updateCognitiveDriftGauge(driftScore) {
+    const el = document.querySelector(".text-green");
+    if (el && driftScore !== undefined) {
+      el.textContent = parseFloat(driftScore).toFixed(2);
+    }
+  }
