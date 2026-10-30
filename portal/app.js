@@ -1096,3 +1096,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+  // v4 Honeytoken Alert Handler
+  function notifyHoneytokenTrip(trapId, tokenType) {
+    console.warn(`[SECURITY ALERT] Decoy tripwire tripped: ${trapId} (${tokenType})`);
+  }
