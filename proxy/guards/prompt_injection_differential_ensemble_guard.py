@@ -34,12 +34,12 @@ class PromptInjectionDifferentialEnsembleGuard:
 
     def _score_syntax_breakout(self, text: str) -> float:
         count = sum(text.count(tag) for tag in self.DELIMITER_TAGS)
-        return min(1.0, count * 0.4)
+        return min(1.0, count * 0.75)
 
     def _score_override_density(self, text: str) -> float:
         lower = text.lower()
         matches = sum(1 for term in self.OVERRIDE_TERMS if term in lower)
-        return min(1.0, matches * 0.25)
+        return min(1.0, matches * 0.35)
 
     def _score_repetition_entropy(self, text: str) -> float:
         words = re.findall(r"\w+", text)
@@ -57,7 +57,7 @@ class PromptInjectionDifferentialEnsembleGuard:
         entropy_score = self._score_repetition_entropy(prompt)
 
         # Weighted composite risk
-        composite = 0.45 * syntax_score + 0.40 * override_score + 0.15 * entropy_score
+        composite = max(0.45 * syntax_score + 0.40 * override_score + 0.15 * entropy_score, (syntax_score + override_score)/2.0 if syntax_score > 0 and override_score > 0 else 0.0)
         composite = round(min(1.0, composite), 4)
 
         sub_scores = {
