@@ -641,6 +641,22 @@ class SecurityPipeline:
                         text_parts.append(part.get("text", ""))
                 text_to_check = " ".join(text_parts)
 
+            # 43. Agent Sycophancy & Delusion Coercion Guard
+            if self.settings.ENABLE_AGENT_SYCOPHANCY_GUARD and text_to_check:
+                syco_res = self.agent_sycophancy_guard.evaluate_prompt(text_to_check)
+                if syco_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="agent_sycophancy_guard", violation_code=syco_res.violation_code, details=syco_res.details)
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": syco_res.violation_code or "agent_sycophancy_coercion", "message": f"Inbound prompt blocked by Sycophancy Guard: {syco_res.details}", "guard": "agent_sycophancy_guard"}}, context=context)
+
+            # 43b. Cross-Agent Covert Channel Guard
+            if self.settings.ENABLE_CROSS_AGENT_COVERT_CHANNEL_GUARD and text_to_check:
+                covert_res = self.cross_agent_covert_channel_guard.analyze_message(text_to_check)
+                if covert_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="cross_agent_covert_channel_guard", violation_code=covert_res.violation_code, details=covert_res.details)
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": covert_res.violation_code or "covert_channel_collusion", "message": f"Inbound message blocked by Covert Channel Guard: {covert_res.details}", "guard": "cross_agent_covert_channel_guard"}}, context=context)
+
             # 42. Shadow Prompt Injection Guard
             if self.settings.ENABLE_SHADOW_PROMPT_INJECTION_GUARD and text_to_check:
                 shadow_res = self.shadow_prompt_injection_guard.strip_and_validate(text_to_check)
