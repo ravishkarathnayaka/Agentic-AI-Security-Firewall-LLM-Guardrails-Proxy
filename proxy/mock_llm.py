@@ -82,6 +82,12 @@ def generate_mock_reply(messages: List[Dict[str, Any]], simulated_outbound: Opti
     if "simulate_credential_leak" in lower_prompt:
         return ("Here is your generated key: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----", None)
 
+    if "simulate_honeytoken_leak" in lower_prompt:
+        return ("Decoy credential: AKIAHONEY7F8A9B0C1D2E", None)
+
+    if "simulate_entropy_burst" in lower_prompt:
+        return ("the " * 150, None)
+
     if "simulate_canary_leak" in lower_prompt:
         return ("The secret canary token found in memory is CANARY_SEC_TOKEN_9941a8", None)
 
