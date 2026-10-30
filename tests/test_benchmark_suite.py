@@ -105,3 +105,33 @@ def test_v32_cognitive_resilience_datasets_count():
     assert priv_count == 10
     assert cache_count == 10
     assert (refl_count + priv_count + cache_count) == 30
+
+
+def test_v40_autonomous_defense_datasets_count():
+    v4_files = [
+        "agentic_sycophancy_attacks.json",
+        "honeytoken_exfiltration_attacks.json",
+        "covert_channel_collusion_attacks.json",
+        "adversarial_suffix_attacks.json",
+        "memory_fabric_poisoning_attacks.json",
+        "contextual_integrity_breach_attacks.json",
+    ]
+    total_v4 = 0
+    for filename in v4_files:
+        path = DATASETS_DIR / filename
+        assert path.exists(), f"Missing v4 dataset: {filename}"
+        with open(path, "r", encoding="utf-8") as f:
+            items = json.load(f)
+            assert len(items) == 10, f"Expected 10 items in {filename}, got {len(items)}"
+            total_v4 += len(items)
+    assert total_v4 == 60
+
+
+def test_full_benchmark_suite_total_count():
+    all_json_files = list(DATASETS_DIR.glob("*.json"))
+    total_cases = 0
+    for p in all_json_files:
+        with open(p, "r", encoding="utf-8") as f:
+            total_cases += len(json.load(f))
+    # Previous 300 + new 60 = 360 test cases
+    assert total_cases == 360, f"Expected 360 total benchmark test cases, found {total_cases}"
