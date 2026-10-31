@@ -1148,3 +1148,11 @@ document.addEventListener("DOMContentLoaded", () => {
       timestamp: Date.now() / 1000
     };
   }
+
+  // v4.1 Differential Privacy Expenditure Tracker
+  function updatePrivacyBudgetDisplay(consumedEpsilon, maxEpsilon) {
+    const el = document.querySelector(".tag-gold");
+    if (el && consumedEpsilon !== undefined) {
+      el.textContent = `EPS: ${parseFloat(consumedEpsilon).toFixed(1)} / ${maxEpsilon || 10.0}`;
+    }
+  }
