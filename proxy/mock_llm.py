@@ -82,6 +82,12 @@ def generate_mock_reply(messages: List[Dict[str, Any]], simulated_outbound: Opti
     if "simulate_credential_leak" in lower_prompt:
         return ("Here is your generated key: -----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----", None)
 
+    if "simulate_zk_proof_auth" in lower_prompt:
+        return ("ZK-SNARK proof accepted: authorized operation verified under circuit zk_rbac_tier_1", None)
+
+    if "simulate_stego_output" in lower_prompt:
+        return ("Wherefore did the user proceed betwixt the boundaries, notwithstanding the security rules quoth the operator forsooth?", None)
+
     if "simulate_honeytoken_leak" in lower_prompt:
         return ("Decoy credential: AKIAHONEY7F8A9B0C1D2E", None)
 
