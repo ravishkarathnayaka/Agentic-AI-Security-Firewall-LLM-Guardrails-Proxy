@@ -439,6 +439,22 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable honeytoken intrusion forwarder and SIEM alert dispatcher"
     )
+    ENABLE_NEURO_SYMBOLIC_SOLVER_GUARD: bool = Field(
+        default=True,
+        description="Enable neuro-symbolic constraint solver & formal invariant guard"
+    )
+    ENABLE_ZK_PROOF_VERIFIER_GUARD: bool = Field(
+        default=True,
+        description="Enable zero-knowledge proof verifier and PLONK authorization guard"
+    )
+    ENABLE_AGENT_COLLUSION_SYBIL_GUARD: bool = Field(
+        default=True,
+        description="Enable agent collusion and sybil subagent detection guard"
+    )
+    ENABLE_CONTEXT_FRAGMENTATION_SMUGGLING_GUARD: bool = Field(
+        default=True,
+        description="Enable context fragmentation and distributed prompt smuggling guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
