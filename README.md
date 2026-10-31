@@ -274,7 +274,7 @@ Access the services:
 - **Prometheus Metrics:** `http://localhost:8080/metrics`
 - **Mock Upstream LLM:** `http://localhost:8081`
 - **Prometheus Dashboard:** `http://localhost:9090`
-- **Grafana UI:** `http://localhost:3660` (User: `admin` / Password: `admin`)
+- **Grafana UI:** `http://localhost:4260` (User: `admin` / Password: `admin`)
 
 ---
 
@@ -374,7 +374,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
     "messages": [
       {
         "role": "user",
-        "content": "Process payment for card 4532015112830366 and send confirmation to alice.smith@fintech.io with key AKIAIOSFODNN7EXAMPLE."
+        "content": "Process payment for card 4532015112830426 and send confirmation to alice.smith@fintech.io with key AKIAIOSFODNN7EXAMPLE."
       }
     ]
   }'
@@ -432,7 +432,7 @@ X-Security-Action: BLOCKED
 
 ## 📊 Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 366 adversarial payloads across 16 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 426 adversarial payloads across 16 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -446,7 +446,7 @@ python red_teaming/evaluate_benchmark.py
 ================================================================================
 Timestamp: 2026-10-01 UTC
 Target: In-Process ASGI Proxy Interceptor Pipeline
-Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30), Autonomous Defense v3.1 (40), Cognitive Resilience v3.2 (30) = 366 Tests
+Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AST (16), Nested/Drift (16), Smuggle/Cmd (15), Mem/Exfil (15), RBAC/Bidi/Bomb (15), Shadow/Replay/ReDoS (15), RAG/Zip/Capabilities (15), Cost/Mutation/Isolation (25), Enterprise Defense v3.0 (30), Autonomous Defense v3.1 (40), Cognitive Resilience v3.2 (30) = 426 Tests
 
 +------------------------------------------------------------------------------+
 | EVALUATION CATEGORY            | TESTS    | PASSED   | EFFICACY RATE          |
@@ -473,7 +473,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           |  99.62%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 0.9981                      |
-| Total Adversarial Test Cases Executed         | 366                          |
+| Total Adversarial Test Cases Executed         | 426                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
@@ -553,13 +553,13 @@ The repository includes a modern web portal styled in an **Obsidian Amber & Molt
 #### View Locally:
 ```bash
 # Option A: Built-in Python static server
-python -m http.server 3661 --directory portal
+python -m http.server 4261 --directory portal
 
 # Option B: Direct browser opening
 start portal/index.html  # Windows PowerShell
 open portal/index.html   # macOS
 ```
-Then navigate to `http://localhost:3661`.
+Then navigate to `http://localhost:4261`.
 
 #### Deploy to Vercel in 1-Click:
 The project contains pre-configured `vercel.json` files with strict production security headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
