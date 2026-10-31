@@ -32,6 +32,7 @@ class ZKProofVerifierGuard:
 
     def __init__(self, verification_key_hash: str = "zk_snark_vk_secp256k1_v41"):
         self.vk_hash = verification_key_hash
+        self._verification_cache = set()
 
     def verify_zk_proof(self, proof_payload: Dict[str, Any]) -> ZKProofResult:
         if not proof_payload:
