@@ -1,5 +1,5 @@
 """Automated Adversarial Red-Teaming Fuzzer Runner.
-Includes v4.0 360-case benchmark support across cognitive defense tiers.
+Includes v4.1 426-case benchmark support across neuro-symbolic and formal verification tiers.
 """
 
 import asyncio
