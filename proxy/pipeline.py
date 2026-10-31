@@ -2797,6 +2797,21 @@ class SecurityPipeline:
             content = msg.get("content", "") or ""
             tool_calls = msg.get("tool_calls", [])
 
+            # v4.1 Differential Privacy Budget Guard
+            if self.settings.ENABLE_DIFFERENTIAL_PRIVACY_BUDGET_GUARD and content:
+                sess_id = context.request_id or "default_session"
+                dp_res = self.differential_privacy_budget_guard.consume_budget(sess_id)
+                if dp_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    return OutboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": dp_res.violation_code, "message": f"Outbound query blocked by Differential Privacy Guard: {dp_res.details}", "guard": "differential_privacy_budget_guard"}})
+
+            # v4.1 Semantic Steganography Entropy Guard
+            if self.settings.ENABLE_SEMANTIC_STEGANOGRAPHY_GUARD and content:
+                stego_res = self.semantic_stego_guard.inspect_text(content)
+                if stego_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    return OutboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": stego_res.violation_code, "message": f"Outbound response blocked by Semantic Steganography Guard: {stego_res.details}", "guard": "semantic_steganography_entropy_guard"}})
+
             # 45. Dynamic Honeytoken Decoy Vault Scrubber
             if self.settings.ENABLE_DYNAMIC_HONEYTOKEN_VAULT_GUARD and content:
                 honey_res = self.dynamic_honeytoken_vault_guard.inspect_text(content)
