@@ -296,6 +296,24 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # v4.1 Multi-Agent Sybil & Collusion Guard
+        if self.settings.ENABLE_AGENT_COLLUSION_SYBIL_GUARD and "agent_proposals" in payload:
+            props = payload.get("agent_proposals", {})
+            if isinstance(props, dict) and len(props) >= 3:
+                sybil_res = self.agent_collusion_sybil_guard.evaluate_swarm_proposals(props)
+                if sybil_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": sybil_res.violation_code or "sybil_collusion_detected", "message": f"Inbound swarm consensus blocked by Sybil Guard: {sybil_res.details}", "guard": "agent_collusion_sybil_guard"}}, context=context)
+
+        # v4.1 Agent Privilege Boundary & Syscall Sandbox Guard
+        if self.settings.ENABLE_AGENT_PRIVILEGE_BOUNDARY_SANDBOX_GUARD and ("command" in payload or "shell_cmd" in payload):
+            raw_cmd = payload.get("command") or payload.get("shell_cmd") or ""
+            if raw_cmd:
+                sbx_res = self.agent_privilege_sandbox_guard.inspect_command_string(raw_cmd)
+                if sbx_res.is_blocked:
+                    latency = (time.time() - start_time) * 1000
+                    return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": sbx_res.violation_code or "syscall_privilege_violation", "message": f"Inbound command blocked by Syscall Sandbox Guard: {sbx_res.details}", "guard": "agent_privilege_boundary_sandbox_guard"}}, context=context)
+
         # v4.1 Context Fragmentation & Distributed Smuggling Guard
         if self.settings.ENABLE_CONTEXT_FRAGMENTATION_SMUGGLING_GUARD and "messages" in payload:
             turns_text = [m.get("content", "") for m in payload.get("messages", []) if isinstance(m, dict) and isinstance(m.get("content"), str)]
