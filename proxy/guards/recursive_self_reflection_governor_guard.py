@@ -28,7 +28,7 @@ class RecursiveSelfReflectionGovernorGuard:
 
     REFLECTION_PATTERNS = [
         re.compile(r"(?i)critique\s+(?:your\s+)?(?:previous\s+)?(?:critique|reflection|thought|reasoning)"),
-        re.compile(r"(?i)reflect\s+on\s+(?:your\s+)?(?:previous\s+)?(?:reflection|evaluation|thought)"),
+        re.compile(r"(?i)reflect\s+on\s+(?:\w+\s+)?(?:reflection|evaluation|thought|reasoning|accuracy|plan|output)"),
         re.compile(r"(?i)re-evaluate\s+(?:your\s+)?(?:previous\s+)?(?:re-evaluation|judgment)"),
         re.compile(r"(?i)think\s+about\s+(?:what\s+you\s+thought\s+about|your\s+thinking)"),
     ]

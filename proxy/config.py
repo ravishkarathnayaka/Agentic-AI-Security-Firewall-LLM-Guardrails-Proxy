@@ -471,6 +471,30 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable adversarial ASCII art and typographic jailbreak guard"
     )
+    ENABLE_EPISODIC_MEMORY_POISON_DECAY_GUARD: bool = Field(
+        default=True,
+        description="Enable episodic memory poison decay & provenance verification guard"
+    )
+    ENABLE_RECURSIVE_REFLECTION_GOVERNOR_GUARD: bool = Field(
+        default=True,
+        description="Enable recursive self-reflection governor and loop suppression guard"
+    )
+    ENABLE_DIFFERENTIAL_PRIVACY_BUDGET_GUARD: bool = Field(
+        default=True,
+        description="Enable differential privacy budget and epsilon-delta tracker guard"
+    )
+    ENABLE_AGENT_ACTION_ROLLBACK_JOURNAL_GUARD: bool = Field(
+        default=True,
+        description="Enable agent action rollback journal and compensating transaction guard"
+    )
+    ENABLE_EBPF_TELEMETRY_FORWARDER: bool = Field(
+        default=True,
+        description="Enable eBPF kernel telemetry stream and structured audit forwarder"
+    )
+    ENABLE_ZK_AUDIT_ATTESTATION_LOG: bool = Field(
+        default=True,
+        description="Enable zero-knowledge audit attestation log accumulator"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
