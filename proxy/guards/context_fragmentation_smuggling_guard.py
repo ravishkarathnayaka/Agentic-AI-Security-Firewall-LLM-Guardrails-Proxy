@@ -34,6 +34,7 @@ class ContextFragmentationSmugglingGuard:
 
     def __init__(self, max_window_turns: int = 5):
         self.max_window_turns = max_window_turns
+        self.min_turn_length = 3
         self.compiled_rules = [(re.compile(p), code) for p, code in self.MALICIOUS_FRAGMENTS]
 
     def inspect_conversation_turns(self, turns: List[str]) -> FragmentationSmuggleResult:
