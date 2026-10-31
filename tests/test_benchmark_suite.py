@@ -134,4 +134,24 @@ def test_full_benchmark_suite_total_count():
         with open(p, "r", encoding="utf-8") as f:
             total_cases += len(json.load(f))
     # Previous 300 + new 60 = 360 test cases
-    assert total_cases == 366, f"Expected 360 total benchmark test cases, found {total_cases}"
+    assert total_cases == 426, f"Expected 360 total benchmark test cases, found {total_cases}"
+
+
+def test_v41_neuro_symbolic_datasets_count():
+    v41_files = [
+        "neuro_symbolic_constraint_violation_attacks.json",
+        "zk_proof_forgery_attacks.json",
+        "agent_collusion_sybil_attacks.json",
+        "context_fragmentation_attacks.json",
+        "ascii_art_typographic_jailbreak_attacks.json",
+        "differential_privacy_extraction_attacks.json",
+    ]
+    total_v41 = 0
+    for filename in v41_files:
+        path = DATASETS_DIR / filename
+        assert path.exists(), f"Missing v4.1 dataset: {filename}"
+        with open(path, "r", encoding="utf-8") as f:
+            items = json.load(f)
+            assert len(items) == 10, f"Expected 10 items in {filename}, got {len(items)}"
+            total_v41 += len(items)
+    assert total_v41 == 60
