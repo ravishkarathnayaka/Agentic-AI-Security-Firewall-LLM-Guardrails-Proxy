@@ -1139,3 +1139,12 @@ document.addEventListener("DOMContentLoaded", () => {
       el.textContent = parseFloat(driftScore).toFixed(2);
     }
   }
+
+  // v4.1 ZK-SNARK Proof Generator & Validator Handler
+  function generateSampleZKProof(circuitId) {
+    return {
+      circuit_id: circuitId || "zk_rbac_tier_1",
+      proof: "a9f8b7c6d5e4f3a2b1c09876543210fedcba9876543210fe",
+      timestamp: Date.now() / 1000
+    };
+  }
