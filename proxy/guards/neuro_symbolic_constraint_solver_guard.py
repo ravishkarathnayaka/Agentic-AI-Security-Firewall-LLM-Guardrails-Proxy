@@ -21,6 +21,7 @@ class NeuroSymbolicResult:
     parsed_predicates: List[str] = field(default_factory=list)
 
 
+# Optimized for sub-millisecond evaluation
 class NeuroSymbolicConstraintSolverGuard:
     """
     Evaluates safety invariants such as:
