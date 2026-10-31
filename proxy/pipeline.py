@@ -296,6 +296,13 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # v4.1 eBPF Telemetry Hook & ZK Audit Accumulator
+        if self.settings.ENABLE_EBPF_TELEMETRY_FORWARDER:
+            self.ebpf_telemetry_forwarder.record_kernel_event(pid=os.getpid(), syscall_name="pipeline_inspect", target=request_id)
+
+        if self.settings.ENABLE_ZK_AUDIT_ATTESTATION_LOG:
+            self.zk_audit_attestation_log.record_attestation("INBOUND_INSPECTION", "VERIFIED", {"request_id": request_id})
+
         # v4.1 Multi-Agent Sybil & Collusion Guard
         if self.settings.ENABLE_AGENT_COLLUSION_SYBIL_GUARD and "agent_proposals" in payload:
             props = payload.get("agent_proposals", {})
