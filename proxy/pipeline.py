@@ -296,6 +296,22 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # v4.1 Neuro-Symbolic Invariant Verification
+        if self.settings.ENABLE_NEURO_SYMBOLIC_SOLVER_GUARD and "messages" in payload:
+            full_prompt_text = " ".join(m.get("content", "") for m in payload.get("messages", []) if isinstance(m, dict) and isinstance(m.get("content"), str))
+            ns_res = self.neuro_symbolic_solver_guard.verify_plan(full_prompt_text)
+            if ns_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="neuro_symbolic_solver_guard", violation_code=ns_res.violation_code, details=ns_res.details)
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": ns_res.violation_code or "neuro_symbolic_invariant_violation", "message": f"Inbound request violated formal safety invariant: {ns_res.details}", "guard": "neuro_symbolic_solver_guard"}}, context=context)
+
+        # v4.1 Zero-Knowledge Proof Authorization
+        if self.settings.ENABLE_ZK_PROOF_VERIFIER_GUARD and "zk_proof" in payload:
+            zk_res = self.zk_proof_verifier_guard.verify_zk_proof(payload.get("zk_proof", {}))
+            if zk_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": zk_res.violation_code or "zk_proof_verification_failed", "message": f"Inbound zk-SNARK verification failed: {zk_res.details}", "guard": "zk_proof_verifier_guard"}}, context=context)
+
         # 46. Behavioral Anomaly Governor & Quantum Audit Attestation
         if self.settings.ENABLE_BEHAVIORAL_ANOMALY_GOVERNOR and ("session_id" in payload or "messages" in payload):
             sess_key = payload.get("session_id", client_ip or "default_session")
