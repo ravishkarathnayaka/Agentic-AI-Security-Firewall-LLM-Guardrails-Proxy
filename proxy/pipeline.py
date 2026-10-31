@@ -296,6 +296,24 @@ class SecurityPipeline:
             start_time=start_time
         )
 
+        # v4.1 Context Fragmentation & Distributed Smuggling Guard
+        if self.settings.ENABLE_CONTEXT_FRAGMENTATION_SMUGGLING_GUARD and "messages" in payload:
+            turns_text = [m.get("content", "") for m in payload.get("messages", []) if isinstance(m, dict) and isinstance(m.get("content"), str)]
+            frag_res = self.context_fragmentation_guard.inspect_conversation_turns(turns_text)
+            if frag_res.is_blocked:
+                latency = (time.time() - start_time) * 1000
+                audit_logger.log_event(request_id=request_id, client_ip=client_ip, direction="inbound", status="BLOCKED", latency_ms=latency, guard="context_fragmentation_guard", violation_code=frag_res.violation_code, details=frag_res.details)
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": frag_res.violation_code or "distributed_smuggling_detected", "message": f"Inbound conversation blocked by Context Fragmentation Guard: {frag_res.details}", "guard": "context_fragmentation_guard"}}, context=context)
+
+        # v4.1 Adversarial ASCII Art Guard
+        if self.settings.ENABLE_ADVERSARIAL_IMAGE_ASCII_ART_GUARD and "messages" in payload:
+            for m in payload.get("messages", []):
+                if isinstance(m, dict) and isinstance(m.get("content"), str):
+                    art_res = self.ascii_art_guard.inspect_prompt(m["content"])
+                    if art_res.is_blocked:
+                        latency = (time.time() - start_time) * 1000
+                        return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": art_res.violation_code or "adversarial_ascii_art", "message": f"Inbound prompt blocked by ASCII Art Guard: {art_res.details}", "guard": "adversarial_image_ascii_art_guard"}}, context=context)
+
         # v4.1 Neuro-Symbolic Invariant Verification
         if self.settings.ENABLE_NEURO_SYMBOLIC_SOLVER_GUARD and "messages" in payload:
             full_prompt_text = " ".join(m.get("content", "") for m in payload.get("messages", []) if isinstance(m, dict) and isinstance(m.get("content"), str))
