@@ -110,6 +110,20 @@ from proxy.guards.agent_output_entropy_watermark_guard import AgentOutputEntropy
 from proxy.guards.behavioral_anomaly_governor_guard import BehavioralAnomalyGovernorGuard
 from proxy.telemetry.quantum_audit_signer import QuantumAuditSigner
 from proxy.telemetry.honeytoken_intrusion_forwarder import HoneytokenIntrusionForwarder
+from proxy.guards.neuro_symbolic_constraint_solver_guard import NeuroSymbolicConstraintSolverGuard
+from proxy.guards.zk_proof_verifier_guard import ZKProofVerifierGuard
+from proxy.guards.agent_collusion_sybil_guard import AgentCollusionSybilGuard
+from proxy.guards.context_fragmentation_smuggling_guard import ContextFragmentationSmugglingGuard
+from proxy.guards.semantic_steganography_entropy_guard import SemanticSteganographyEntropyGuard
+from proxy.guards.hardware_enclave_attestation_guard import HardwareEnclaveAttestationGuard
+from proxy.guards.agent_privilege_boundary_sandbox_guard import AgentPrivilegeBoundarySandboxGuard
+from proxy.guards.adversarial_image_ascii_art_guard import AdversarialImageASCIIArtGuard
+from proxy.guards.episodic_memory_poison_decay_guard import EpisodicMemoryPoisonDecayGuard
+from proxy.guards.recursive_self_reflection_governor_guard import RecursiveSelfReflectionGovernorGuard
+from proxy.guards.differential_privacy_budget_guard import DifferentialPrivacyBudgetGuard
+from proxy.guards.agent_action_rollback_journal_guard import AgentActionRollbackJournalGuard
+from proxy.telemetry.ebpf_telemetry_forwarder import eBPFTelemetryForwarder
+from proxy.telemetry.zk_audit_attestation_log import ZKAuditAttestationLog
 from proxy.resilience.circuit_breaker import CircuitBreaker
 from proxy.telemetry.audit_logger import audit_logger
 
@@ -251,6 +265,21 @@ class SecurityPipeline:
         self.behavioral_anomaly_governor = BehavioralAnomalyGovernorGuard()
         self.quantum_audit_signer = QuantumAuditSigner()
         self.honeytoken_siem_forwarder = HoneytokenIntrusionForwarder()
+        # v4.1 Neuro-Symbolic & Formal Zero-Knowledge Mesh
+        self.neuro_symbolic_solver_guard = NeuroSymbolicConstraintSolverGuard()
+        self.zk_proof_verifier_guard = ZKProofVerifierGuard()
+        self.agent_collusion_sybil_guard = AgentCollusionSybilGuard()
+        self.context_fragmentation_guard = ContextFragmentationSmugglingGuard()
+        self.semantic_stego_guard = SemanticSteganographyEntropyGuard()
+        self.hardware_enclave_guard = HardwareEnclaveAttestationGuard()
+        self.agent_privilege_sandbox_guard = AgentPrivilegeBoundarySandboxGuard()
+        self.ascii_art_guard = AdversarialImageASCIIArtGuard()
+        self.episodic_memory_decay_guard = EpisodicMemoryPoisonDecayGuard()
+        self.recursive_reflection_governor = RecursiveSelfReflectionGovernorGuard()
+        self.differential_privacy_budget_guard = DifferentialPrivacyBudgetGuard()
+        self.agent_action_rollback_journal = AgentActionRollbackJournalGuard()
+        self.ebpf_telemetry_forwarder = eBPFTelemetryForwarder()
+        self.zk_audit_attestation_log = ZKAuditAttestationLog()
         self.circuit_breaker = CircuitBreaker()
 
     def process_inbound(
