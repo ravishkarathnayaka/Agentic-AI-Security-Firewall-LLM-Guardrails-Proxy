@@ -455,6 +455,22 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable context fragmentation and distributed prompt smuggling guard"
     )
+    ENABLE_SEMANTIC_STEGANOGRAPHY_GUARD: bool = Field(
+        default=True,
+        description="Enable semantic steganography and linguistic syntax entropy guard"
+    )
+    ENABLE_HARDWARE_ENCLAVE_ATTESTATION_GUARD: bool = Field(
+        default=True,
+        description="Enable hardware enclave attestation and TPM quote validation guard"
+    )
+    ENABLE_AGENT_PRIVILEGE_BOUNDARY_SANDBOX_GUARD: bool = Field(
+        default=True,
+        description="Enable agent privilege boundary and dynamic syscall sandbox guard"
+    )
+    ENABLE_ADVERSARIAL_IMAGE_ASCII_ART_GUARD: bool = Field(
+        default=True,
+        description="Enable adversarial ASCII art and typographic jailbreak guard"
+    )
     CANARY_SECRET_KEY: str = Field(
         default="llm-guardrails-proxy-canary-secret-salt-2026",
         description="Secret key used to compute HMAC signatures for dynamic canaries"
