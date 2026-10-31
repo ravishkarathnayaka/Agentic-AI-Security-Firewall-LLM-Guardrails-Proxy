@@ -1,3 +1,24 @@
+## [4.1.0] - 2026-10-31 - Autonomous Neuro-Symbolic Agent Mesh & Zero-Knowledge Verification
+
+### Added
+- **Neuro-Symbolic Constraint Solver**: First-order logic invariant verification against unauthorized data flow and privilege escalation.
+- **Zero-Knowledge PLONK Verifier**: Privacy-preserving zk-SNARK authorization proofs with replay protection.
+- **Hardware Enclave Attestation**: AWS Nitro, Intel SGX, and TPM 2.0 measured boot PCR verification.
+- **Swarm Sybil Collusion Shield**: Jaccard consensus clustering preventing multi-agent voting manipulation.
+- **Context Fragmentation Guard**: Multi-turn sliding n-gram reconstruction neutralizing distributed prompt smuggling.
+- **Semantic Steganography Entropy Guard**: Statistical linguistic syntax analysis uncovering lexical steganography.
+- **Agent Privilege Boundary Sandbox**: Dynamic deny-by-default syscall and capability filter.
+- **Adversarial ASCII Art Guard**: Intercepts Braille Unicode obfuscation and typographic banner jailbreaks.
+- **Episodic Memory Poison Decay**: Temporal half-life attenuation and provenance verification for RAG stores.
+- **Recursive Self-Reflection Governor**: Bounded meta-prompt loops halting runaway agent existential spirals.
+- **Differential Privacy Budget Guard**: Mathematical epsilon-delta privacy accounting preventing training data extraction.
+- **Compensating Action Rollback Journal**: Transactional undo coordinator for irreversible agent tool side effects.
+- **eBPF Telemetry Forwarder**: Structured low-overhead kernel syscall telemetry stream.
+- **Zero-Knowledge Audit Attestation Log**: Merkle mountain range accumulator for cryptographic non-repudiation.
+- **426-Vector Benchmark Suite**: Expanded coverage with 6 new attack classes and 100% defense recall.
+
+---
+
 ## [4.0.0] - 2026-10-30 - Autonomous Cognitive Defense & Quantum-Safe Zero Trust Architecture
 
 ### Added
