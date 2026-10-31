@@ -29,6 +29,7 @@ class eBPFTelemetryForwarder:
 
     def __init__(self, buffer_capacity: int = 1000):
         self.capacity = buffer_capacity
+        self.batch_flush_size = 50
         self.events: List[eBPFEvent] = []
 
     def record_kernel_event(self, pid: int, syscall_name: str, target: str, verdict: str = "ALLOWED") -> eBPFEvent:
