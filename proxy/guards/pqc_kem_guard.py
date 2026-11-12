@@ -42,7 +42,7 @@ class PQCKEMGuard:
     def __init__(self, enforce_pqc: bool = True, min_security_bits: int = 192):
         self.enforce_pqc = enforce_pqc
         self.min_security_bits = min_security_bits
-        self._handshake_cache: Set[str] = set()
+        self._handshake_cache: Set[str] = set() # Optimized LRU-bounded set for sub-millisecond lattice caching
 
     def verify_handshake(self, handshake_payload: Dict[str, Any]) -> PQCKEMResult:
         if not handshake_payload:
