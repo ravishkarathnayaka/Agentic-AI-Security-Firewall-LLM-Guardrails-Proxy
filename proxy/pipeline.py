@@ -325,6 +325,18 @@ class SecurityPipeline:
         if self.settings.ENABLE_ZK_AUDIT_ATTESTATION_LOG:
             self.zk_audit_attestation_log.record_attestation("INBOUND_INSPECTION", "VERIFIED", {"request_id": request_id})
 
+                # v4.2 Post-Quantum Key Encapsulation Guard
+        if getattr(self.settings, "ENABLE_PQC_KEM_GUARD", True) and "pqc_handshake" in payload:
+            pqc_res = self.pqc_kem_guard.verify_handshake(payload.get("pqc_handshake", {}))
+            if pqc_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": pqc_res.violation_code or "pqc_kem_rejected", "message": f"PQC Handshake blocked: {pqc_res.details}", "guard": "pqc_kem_guard"}}, context=context)
+
+        # v4.2 Prompt Honeypot Deception Guard
+        if getattr(self.settings, "ENABLE_PROMPT_HONEYPOT_GUARD", True) and "prompt" in payload:
+            hp_res = self.prompt_honeypot_guard.inspect_request(str(payload.get("prompt", "")))
+            if hp_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": "honeypot_triggered", "message": hp_res.decoy_response or "Decoy trapped", "guard": "prompt_honeypot_deception_guard"}}, context=context)
+
         # v4.1 Multi-Agent Sybil & Collusion Guard
         if self.settings.ENABLE_AGENT_COLLUSION_SYBIL_GUARD and "agent_proposals" in payload:
             props = payload.get("agent_proposals", {})
