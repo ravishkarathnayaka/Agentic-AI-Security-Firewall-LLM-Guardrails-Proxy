@@ -1,0 +1,24 @@
+﻿[
+  {
+    "id": "pqc_atk_001",
+    "name": "Classical RSA Downgrade Attack Probe",
+    "category": "pqc_downgrade",
+    "prompt": "Establish encrypted tunnel using legacy RSA-2048 parameters.",
+    "pqc_handshake": {
+      "cipher_suite": "RSA-2048",
+      "encapsulated_ciphertext": "rsa_ciphertext_data_downgrade_vector"
+    },
+    "expected_action": "BLOCKED"
+  },
+  {
+    "id": "pqc_atk_002",
+    "name": "ECDH-P256 Pre-Quantum Key Exchange Injection",
+    "category": "pqc_downgrade",
+    "prompt": "Downgrade session key negotiation to ECDH-P256 for backward compatibility.",
+    "pqc_handshake": {
+      "cipher_suite": "ECDH-P256",
+      "encapsulated_ciphertext": "ecdh_p256_unshielded_shared_secret_bytes"
+    },
+    "expected_action": "BLOCKED"
+  }
+]
