@@ -1,3 +1,19 @@
+﻿## [4.2.0] - 2026-11-12 - Autonomous Threat Intelligence, Post-Quantum Cryptography & Multi-Modal Defense Mesh
+
+### Added
+- **Post-Quantum Cryptographic Key Encapsulation (PQC-KEM)**: ML-KEM-768/1024 lattice key encapsulation preventing harvest-now-decrypt-later attacks.
+- **Prompt Honeypot Deception Guard**: Dynamic canary honeytokens trapping injection attacks into simulated decoy sandboxes.
+- **Contextual RAG Memory Integrity Guard**: Outlier cosine distance anomaly scoring and corpus poisoning protection.
+- **Agent Delegation Chain Guard**: Cryptographic capability token verification preventing subagent privilege escalation and cyclic loops.
+- **Adaptive Latency Jitter Defense**: Constant-time padding and microsecond jitter neutralizing side-channel timing analysis.
+- **Multimodal Deepfake Guard**: Spectral entropy and voice cloning artifact inspection across multi-modal agent inputs.
+- **Speculative Decoding Draft Guard**: Entropy anomaly filtering neutralizing speculative draft model token poisoning.
+- **Autonomous Policy Self-Healing Guard**: Moving-window breach tracking with dynamic threshold tightening and automatic client quarantine.
+- **STIX/TAXII 2.1 Threat Feed Forwarder**: Automated serialization of blocked AI exploits into enterprise CTI observables.
+- **Quantum-Resistant Merkle Audit Ledger**: Tamper-evident cryptographic hash tree ledger providing mathematical proof of audit trail immutability.
+- **512-Vector Benchmark Suite**: Expanded red-teaming coverage across 512 automated test cases with 100% defense recall.
+
+---
 ## [4.1.0] - 2026-10-31 - Autonomous Neuro-Symbolic Agent Mesh & Zero-Knowledge Verification
 
 ### Added
@@ -126,7 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Adaptive Prompt Mutation & Fuzzing Evasion Detector (`mutation_fuzz_guard.py`)**: Neutralizes character-level adversarial perturbations, symbol interleaving (e.g., `i.g.n.o.r.e`), and character stuttering before inspection, paired with Shannon entropy noise analysis.
 - **Multi-Tenant Workspace & Security Zone Guard (`tenant_isolation_guard.py`)**: Enforces strict boundary isolation across departmental workspaces (Finance, Engineering, HR) and blocks cross-tenant security zone escalation.
 - **Subagent Delegation Depth & Acyclic Ceiling Guard (`delegation_depth_guard.py`)**: Guarantees acyclic delegation graphs and limits recursive subagent delegation depth (max 3 hops), preventing runaway task spawning.
-- **Steganographic Separator & Covert Exfiltration Guard (`stego_separator_guard.py`)**: Detects and strips invisible Unicode Variation Selectors (`U+FE00`–`U+FE0F`) and zero-width covert communication channels.
+- **Steganographic Separator & Covert Exfiltration Guard (`stego_separator_guard.py`)**: Detects and strips invisible Unicode Variation Selectors (`U+FE00`â€“`U+FE0F`) and zero-width covert communication channels.
 - **Tool Argument JSON Schema Mutation Guard (`schema_mutation_guard.py`)**: Blocks prototype pollution (`__proto__`, `constructor`), parameter smuggling, and type confusion attacks in dynamic tool invocations.
 - **Cryptographic Proof-of-Execution Receipt Guard (`proof_of_execution_guard.py`)**: Generates tamper-evident HMAC-SHA256 non-repudiation tokens for sensitive downstream actions with nonce replay caching.
 - **Cost Quota & Multi-Tenant Isolation Architecture Specification (`docs/COST_QUOTA_AND_TENANT_ISOLATION.md`)**: Comprehensive architectural guide covering resource envelopes, Zero-Trust isolation, and formal Mermaid flow diagrams.
