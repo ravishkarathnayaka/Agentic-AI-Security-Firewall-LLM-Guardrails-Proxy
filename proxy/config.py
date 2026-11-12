@@ -500,6 +500,14 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable prompt honeypot deception and decoy sandbox guard"
     )
+    ENABLE_RAG_MEMORY_INTEGRITY_GUARD: bool = Field(
+        default=True,
+        description="Enable contextual RAG memory poisoning and knowledge base integrity guard"
+    )
+    ENABLE_AGENT_DELEGATION_CHAIN_GUARD: bool = Field(
+        default=True,
+        description="Enable agent delegation chain and verifiable capability token guard"
+    )
     ENABLE_ZK_AUDIT_ATTESTATION_LOG: bool = Field(
         default=True,
         description="Enable zero-knowledge audit attestation log accumulator"
