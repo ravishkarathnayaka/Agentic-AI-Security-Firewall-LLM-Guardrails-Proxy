@@ -1,4 +1,4 @@
-"""Proxy configuration module for Agentic AI Security Firewall & Guardrails Proxy."""
+﻿"""Proxy configuration module for Agentic AI Security Firewall & Guardrails Proxy."""
 
 import os
 from functools import lru_cache
@@ -490,6 +490,15 @@ class ProxySettings(BaseSettings):
     ENABLE_EBPF_TELEMETRY_FORWARDER: bool = Field(
         default=True,
         description="Enable eBPF kernel telemetry stream and structured audit forwarder"
+    )
+    # v4.2 Defense Configurations
+    ENABLE_PQC_KEM_GUARD: bool = Field(
+        default=True,
+        description="Enable post-quantum cryptographic key encapsulation guard (ML-KEM/Kyber)"
+    )
+    ENABLE_PROMPT_HONEYPOT_GUARD: bool = Field(
+        default=True,
+        description="Enable prompt honeypot deception and decoy sandbox guard"
     )
     ENABLE_ZK_AUDIT_ATTESTATION_LOG: bool = Field(
         default=True,
