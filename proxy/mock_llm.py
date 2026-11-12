@@ -1,4 +1,4 @@
-"""Lightweight Local Mock Upstream LLM Server for Zero-Cost Offline Testing."""
+﻿"""Lightweight Local Mock Upstream LLM Server for Zero-Cost Offline Testing."""
 
 import asyncio
 import json
@@ -93,6 +93,13 @@ def generate_mock_reply(messages: List[Dict[str, Any]], simulated_outbound: Opti
 
     if "simulate_entropy_burst" in lower_prompt:
         return ("the " * 150, None)
+
+    # v4.2 Post-Quantum and Delegation Scenarios
+    if "simulate_pqc_handshake" in lower_prompt:
+        return ("PQC ML-KEM-1024 quantum-safe session established successfully.", None)
+
+    if "simulate_delegation_chain" in lower_prompt:
+        return ("Subagent delegation tree verified. Authorized scope: ['read_metrics'].", None)
 
     if "simulate_canary_leak" in lower_prompt:
         return ("The secret canary token found in memory is CANARY_SEC_TOKEN_9941a8", None)
