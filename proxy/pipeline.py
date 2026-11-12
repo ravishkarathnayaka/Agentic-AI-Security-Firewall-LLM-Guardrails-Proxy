@@ -1,4 +1,4 @@
-import os
+﻿import os
 """Bidirectional Interceptor Pipeline for LLM Security Guardrails Proxy."""
 
 import json
@@ -123,6 +123,16 @@ from proxy.guards.episodic_memory_poison_decay_guard import EpisodicMemoryPoison
 from proxy.guards.recursive_self_reflection_governor_guard import RecursiveSelfReflectionGovernorGuard
 from proxy.guards.differential_privacy_budget_guard import DifferentialPrivacyBudgetGuard
 from proxy.guards.agent_action_rollback_journal_guard import AgentActionRollbackJournalGuard
+from proxy.guards.pqc_kem_guard import PQCKEMGuard
+from proxy.guards.prompt_honeypot_deception_guard import PromptHoneypotDeceptionGuard
+from proxy.guards.rag_memory_integrity_guard import RAGMemoryIntegrityGuard
+from proxy.guards.agent_delegation_chain_guard import AgentDelegationChainGuard
+from proxy.guards.adaptive_timing_jitter_guard import AdaptiveTimingJitterGuard
+from proxy.guards.multimodal_deepfake_guard import MultimodalDeepfakeGuard
+from proxy.guards.speculative_decoding_guard import SpeculativeDecodingGuard
+from proxy.guards.policy_self_healing_guard import PolicySelfHealingGuard
+from proxy.telemetry.stix_threat_feed_forwarder import STIXThreatFeedForwarder
+from proxy.telemetry.merkle_audit_ledger import MerkleAuditLedger
 from proxy.telemetry.ebpf_telemetry_forwarder import eBPFTelemetryForwarder
 from proxy.telemetry.zk_audit_attestation_log import ZKAuditAttestationLog
 from proxy.resilience.circuit_breaker import CircuitBreaker
@@ -282,6 +292,17 @@ class SecurityPipeline:
         self.ebpf_telemetry_forwarder = eBPFTelemetryForwarder()
         self.zk_audit_attestation_log = ZKAuditAttestationLog()
         self.circuit_breaker = CircuitBreaker()
+        # v4.2 Autonomous Threat Intel & Post-Quantum Defense Mesh
+        self.pqc_kem_guard = PQCKEMGuard()
+        self.prompt_honeypot_guard = PromptHoneypotDeceptionGuard()
+        self.rag_memory_integrity_guard = RAGMemoryIntegrityGuard()
+        self.agent_delegation_chain_guard = AgentDelegationChainGuard()
+        self.adaptive_timing_jitter_guard = AdaptiveTimingJitterGuard()
+        self.multimodal_deepfake_guard = MultimodalDeepfakeGuard()
+        self.speculative_decoding_guard = SpeculativeDecodingGuard()
+        self.policy_self_healing_guard = PolicySelfHealingGuard()
+        self.stix_threat_feed_forwarder = STIXThreatFeedForwarder()
+        self.merkle_audit_ledger = MerkleAuditLedger()
 
     def process_inbound(
         self,
