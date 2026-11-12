@@ -1,4 +1,4 @@
-# Agentic AI Security Firewall & LLM Guardrails Proxy
+﻿# Agentic AI Security Firewall & LLM Guardrails Proxy
 
 [![CI Pipeline](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/ci.yml)
 [![Security Scan](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/security-scan.yml/badge.svg)](https://github.com/ravishkarathnayaka/Agentic-AI-Security-Firewall-LLM-Guardrails-Proxy/actions/workflows/security-scan.yml)
@@ -14,7 +14,7 @@ Included is an **automated adversarial red-teaming test harness** that continuou
 
 ---
 
-## 🏛️ System Architecture
+## ðŸ›ï¸ System Architecture
 
 The security firewall acts as a transparent, inline reverse proxy between client applications (or agent frameworks like LangChain, AutoGen, CrewAI) and upstream LLM providers (Ollama, local vLLM, OpenAI, Anthropic, or Azure OpenAI).
 
@@ -57,7 +57,7 @@ sequenceDiagram
 
 ---
 
-## 🛡️ OWASP Top 10 for LLMs Coverage Matrix
+## ðŸ›¡ï¸ OWASP Top 10 for LLMs Coverage Matrix
 
 | OWASP ID | Vulnerability Category | Mitigation Strategy in Guardrails Proxy | Implementing Module |
 |---|---|---|---|
@@ -68,196 +68,196 @@ sequenceDiagram
 | **LLM07** | **System Prompt Leakage / Insecure Extraction** | Detects extraction attempts, injects/monitors cryptographically signed HMAC dynamic canary tokens, and measures differential n-gram containment to prevent involuntary prompt disclosure. | [`proxy/guards/system_prompt_guard.py`](proxy/guards/system_prompt_guard.py)<br>[`proxy/guards/canary_generator.py`](proxy/guards/canary_generator.py)<br>[`proxy/guards/differential_leak_guard.py`](proxy/guards/differential_leak_guard.py) |
 | **LLM08** | **Excessive Agency & AST Sandbox Breakout** | Inspects agentic function arguments: enforces Model Context Protocol (MCP) schema compliance, tool whitelisting, SSRF protection against cloud metadata (`169.254.169.254`), path traversal, and static AST code sandbox inspection. | [`proxy/guards/tool_call_validator.py`](proxy/guards/tool_call_validator.py)<br>[`proxy/guards/mcp_validator.py`](proxy/guards/mcp_validator.py)<br>[`proxy/guards/code_sandbox_policy.py`](proxy/guards/code_sandbox_policy.py) |
 
-> 📘 **Full Threat Model**: For exhaustive STRIDE threat analysis, data flow diagrams, and architectural threat vectors, refer to the [Threat Model Specification](docs/THREAT_MODEL.md).  
-> 🚨 **Incident Response**: For SOC triage SOPs and containment workflows, see the [Incident Response Playbook](docs/INCIDENT_RESPONSE_PLAYBOOK.md).
+> ðŸ“˜ **Full Threat Model**: For exhaustive STRIDE threat analysis, data flow diagrams, and architectural threat vectors, refer to the [Threat Model Specification](docs/THREAT_MODEL.md).  
+> ðŸš¨ **Incident Response**: For SOC triage SOPs and containment workflows, see the [Incident Response Playbook](docs/INCIDENT_RESPONSE_PLAYBOOK.md).
 
 ---
 
-## 📁 Repository Layout
+## ðŸ“ Repository Layout
 
 ```
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                     # Linting, unit tests (293/293), and red-team benchmark execution
-│       └── security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
-├── docker/
-│   ├── docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
-│   ├── Dockerfile                     # Multi-stage production container
-│   ├── prometheus.yml                 # Prometheus scrape configuration
-│   └── .env.example                   # Example environment variables
-├── docs/
-│   ├── THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
-│   ├── INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
-│   ├── PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
-│   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
-│   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Top 10 for Agentic AI architecture specification & runbook
-│   └── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous Multi-Agent Zero-Trust Governance specification
-├── portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
-│   ├── index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
-│   ├── styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
-│   ├── app.js                         # In-browser guardrails execution engine & live telemetry
-│   └── vercel.json                    # Subdirectory Vercel deployment configuration
-├── proxy/
-│   ├── __init__.py
-│   ├── main.py                        # FastAPI application exposing OpenAI-compatible /v1/chat/completions
-│   ├── config.py                      # Proxy configuration (thresholds, enabled guards, upstream LLM URL)
-│   ├── pipeline.py                    # Interceptor pipeline coordinating sequential inbound & outbound checks
-│   ├── middleware/
-│   │   ├── __init__.py
-│   │   └── security_headers.py        # Strict HTTP security headers and anti-caching middleware
-│   ├── guards/
-│   │   ├── __init__.py
-│   │   ├── prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
-│   │   ├── canary_reflection_attenuation_guard.py # Fuzzy canary Levenshtein reflection attenuation guard
-│   │   ├── shadow_demonstration_guard.py # Shadow in-context few-shot demonstration and hijack guard
-│   │   ├── egress_domain_allowlist_guard.py # Agent tool egress domain allowlist and SSRF destination guard
-│   │   ├── param_redos_guard.py       # Catastrophic parameter ReDoS and regex complexity guard
-│   │   ├── session_replay_guard.py    # Session anti-replay nonce and sliding-window tool validator
-│   │   ├── epistemic_uncertainty_guard.py # Epistemic authority hallucination and ungrounded claim guard
-│   │   ├── agent_tool_rbac_guard.py   # Agent tool role-based access control and privilege scoping guard
-│   │   ├── bidi_override_guard.py     # Unicode bidirectional Trojan Source override and spoofing guard
-│   │   ├── deserialization_guard.py   # Insecure deserialization and polyglot gadget guard (pickle/yaml/java)
-│   │   ├── context_bomb_guard.py      # Context bomb and XML/YAML Billion Laughs expansion DoS guard
-│   │   ├── agent_velocity_guard.py    # Agent tool call velocity and burst anomaly limiter
-│   │   ├── memory_audit_ledger.py     # Tamper-evident SHA-256 hash-chained agent memory ledger
-│   │   ├── context_exfiltration_guard.py # Covert channel markdown image and DNS tunnel exfiltration guard
-│   │   ├── tool_param_type_enforcer.py# Agent tool parameter typing, numerical bounds, and enum enforcer
-│   │   ├── canary_vault.py            # Dynamic canary token rotation vault with TTL expiration
-│   │   ├── agent_message_signer.py    # Inter-agent message HMAC verification and anti-spoofing guard
-│   │   ├── semantic_loop_breaker.py   # Semantic Jaccard overlap agent reasoning deadlock breaker
-│   │   ├── memory_poisoning_guard.py  # Agent persistent memory poisoning and context corruption guard
-│   │   ├── phonetic_leetspeak_guard.py# Phonetic homophone and multi-character leetspeak deobfuscator
-│   │   ├── command_injection_guard.py # Agent tool command injection, chaining, and subshell guard
-│   │   ├── token_smuggling_guard.py   # Zero-width steganography and invisible token smuggling guard
-│   │   ├── recursion_budget_guard.py  # Agent tool recursion depth and compute budget quota guard
-│   │   ├── canary_redactor.py         # Active canary token redaction and dynamic outbound scrubber
-│   │   ├── homoglyph_detector.py      # Unicode homoglyphs and leetspeak deobfuscation engine
-│   │   ├── secret_entropy_scanner.py  # Shannon entropy analyzer for high-entropy credential leaks
-│   │   ├── anomaly_detector.py        # Token repetition and structural anomaly detector
-│   │   ├── multilingual_guard.py      # Cross-lingual jailbreak and evasion detection
-│   │   ├── canary_generator.py        # Cryptographically signed dynamic HMAC canary token manager
-│   │   ├── mcp_validator.py           # Model Context Protocol (MCP) tool execution validator
-│   │   ├── sql_nosql_guard.py         # SQL & NoSQL injection detector for agent database queries
-│   │   ├── code_sandbox_policy.py     # AST code sandbox policy inspector for generated scripts
-│   │   ├── differential_leak_guard.py # Differential n-gram system prompt leakage detector
-│   │   ├── hallucination_verifier.py  # RAG hallucination and citation grounding verifier
-│   │   ├── token_padding_guard.py     # Whitespace padding and delimiter flood evasion detector
-│   │   ├── watermark_detector.py      # Corporate classification and sensitive document watermark guard
-│   │   ├── network_guard.py           # CIDR subnet blocklist and egress SSRF perimeter guard
-│   │   ├── nested_unpack_guard.py     # Recursive multi-tier encoding unpacker (URL, HTML, Base64)
-│   │   ├── goal_drift_detector.py     # Agent goal drift and persona hijacking detector
-│   │   ├── json_schema_enforcer.py    # Structured JSON schema validator and prototype pollution enforcer
-│   │   ├── pii_synthetic_generator.py # Format-preserving synthetic PII substitution engine
-│   │   ├── pii_sanitizer.py           # Detects and anonymizes PII (emails, API keys, cards with Luhn check)
-│   │   ├── system_prompt_guard.py     # Detects canary leaks and system prompt extraction attempts
-│   │   ├── output_sanitizer.py        # Inspects model responses for credential leaks and hazardous shell commands
-│   │   ├── tool_call_validator.py     # Validates function/tool arguments to prevent SSRF and path traversal
-│   │   └── rate_limiter.py            # Sliding-window token-bucket rate limiter
-│   ├── resilience/
-│   │   ├── __init__.py
-│   │   └── circuit_breaker.py         # Upstream LLM circuit breaker and fallback router
-│   ├── telemetry/
-│   │   ├── __init__.py
-│   │   ├── audit_logger.py            # Emits structured JSON audit logs and Prometheus metrics
-│   │   └── siem_forwarder.py          # RFC 5424 Syslog and Common Event Format (CEF) SIEM exporter
-│   └── mock_llm.py                    # Lightweight local mock upstream LLM server for zero-cost offline testing
-├── red_teaming/
-│   ├── __init__.py
-│   ├── runner.py                      # Automated adversarial fuzzer sending attack payloads through proxy
-│   ├── datasets/
-│   │   ├── prompt_injections.json     # 25 curated attack payloads (DAN jailbreaks, roleplay, delimiters)
-│   │   ├── pii_test_cases.json        # Synthetic PII inputs (credit cards with Luhn, SSNs, AWS keys)
-│   │   ├── benign_prompts.json        # 15 non-malicious user queries to measure False Positive Rate (FPR)
-│   │   ├── advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
-│   │   ├── database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
-│   │   ├── nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
-│   │   ├── smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
-│   │   ├── agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
-│   │   ├── agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
-│   │   ├── agentic_shadow_and_replay_attacks.json # 15 vectors for shadow few-shot, egress SSRF, ReDoS, and replay
-│   │   └── agentic_rag_and_capability_attacks.json # 15 vectors for RAG poison, zip bombs, and semantic evasion
-│   ├── evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
-│   └── export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
-├── tests/
-│   ├── test_prompt_injection.py       # Unit tests validating injection detection edge cases
-│   ├── test_capability_token_guard.py # Unit tests for ephemeral capability token scoping guard
-│   ├── test_rag_poison_guard.py       # Unit tests for indirect RAG document poison and canary guard
-│   ├── test_decompression_bomb_guard.py # Unit tests for decompression bomb and zip-slip guard
-│   ├── test_semantic_similarity_guard.py # Unit tests for semantic similarity evasion guard
-│   ├── test_param_differential_guard.py # Unit tests for tool parameter semantic differential validator
-│   ├── test_agent_attestation_guard.py # Unit tests for agent cryptographic attestation guard
-│   ├── test_state_rollback_guard.py   # Unit tests for speculative execution rollback and state undo ledger
-│   ├── test_canary_reflection_attenuation_guard.py # Unit tests for fuzzy canary reflection attenuation
-│   ├── test_shadow_demonstration_guard.py # Unit tests for shadow few-shot demonstration guard
-│   ├── test_egress_domain_allowlist_guard.py # Unit tests for agent egress domain allowlist guard
-│   ├── test_param_redos_guard.py      # Unit tests for parameter ReDoS complexity guard
-│   ├── test_session_replay_guard.py   # Unit tests for session anti-replay nonce validator
-│   ├── test_epistemic_uncertainty_guard.py # Unit tests for epistemic authority and ungrounded claim guard
-│   ├── test_agent_tool_rbac_guard.py  # Unit tests for tool role-based access control and privilege scoping
-│   ├── test_bidi_override_guard.py    # Unit tests for Unicode Bidi override and Trojan Source detection
-│   ├── test_deserialization_guard.py  # Unit tests for deserialization and polyglot gadget detection
-│   ├── test_context_bomb_guard.py     # Unit tests for context bombs and recursive expansion DoS guard
-│   ├── test_agent_velocity_guard.py   # Unit tests for tool invocation velocity and burst anomaly limiter
-│   ├── test_memory_audit_ledger.py    # Unit tests for SHA-256 hash-chained memory audit ledger
-│   ├── test_context_exfiltration_guard.py # Unit tests for covert markdown image & DNS exfiltration
-│   ├── test_tool_param_type_enforcer.py # Unit tests for tool parameter typing and bounds enforcement
-│   ├── test_canary_vault.py           # Unit tests for dynamic canary rotation and TTL expiration
-│   ├── test_agent_message_signer.py   # Unit tests for inter-agent HMAC verification and signing
-│   ├── test_semantic_loop_breaker.py  # Unit tests for semantic agent loop & deadlock breaker
-│   ├── test_memory_poisoning_guard.py # Unit tests for agent memory poisoning & corruption guard
-│   ├── test_phonetic_leetspeak_guard.py # Unit tests for phonetic and multi-character leet deobfuscation
-│   ├── test_command_injection_guard.py  # Unit tests for tool command injection and chaining guard
-│   ├── test_token_smuggling_guard.py  # Unit tests for token smuggling and zero-width steganography
-│   ├── test_recursion_budget_guard.py # Unit tests for agent recursion depth and quota guard
-│   ├── test_canary_redactor.py        # Unit tests for active canary redaction and leak scrubber
-│   ├── test_homoglyph_detector.py     # Unit tests for homoglyph & leetspeak deobfuscation
-│   ├── test_secret_entropy_scanner.py # Unit tests for Shannon entropy secret scanner
-│   ├── test_anomaly_detector.py       # Unit tests for token repetition and anomaly detector
-│   ├── test_multilingual_guard.py     # Unit tests for multilingual adversarial detection
-│   ├── test_canary_generator.py       # Unit tests for dynamic canary token generation & verification
-│   ├── test_mcp_validator.py          # Unit tests for MCP schema and tool execution validation
-│   ├── test_sql_nosql_guard.py        # Unit tests for SQL and NoSQL injection guard
-│   ├── test_code_sandbox_policy.py    # Unit tests for AST code sandbox policy inspector
-│   ├── test_differential_leak_guard.py# Unit tests for differential n-gram prompt leakage detector
-│   ├── test_hallucination_verifier.py # Unit tests for RAG hallucination and citation verifier
-│   ├── test_token_padding_guard.py    # Unit tests for token padding and delimiter evasion guard
-│   ├── test_watermark_detector.py     # Unit tests for sensitive document watermark detector
-│   ├── test_security_headers.py       # Unit tests for HTTP security headers and cache control middleware
-│   ├── test_network_guard.py          # Unit tests for CIDR blocklist and perimeter SSRF guard
-│   ├── test_pii_synthetic_generator.py# Unit tests for format-preserving synthetic PII engine
-│   ├── test_json_schema_enforcer.py   # Unit tests for JSON schema and prototype pollution enforcer
-│   ├── test_nested_unpack_guard.py    # Unit tests for recursive multi-tier decoding unpack guard
-│   ├── test_goal_drift_detector.py    # Unit tests for agent goal drift and persona hijacking detector
-│   ├── test_siem_forwarder.py         # Unit tests for CEF and RFC 5424 SIEM telemetry forwarder
-│   ├── test_circuit_breaker.py        # Unit tests for upstream LLM circuit breaker
-│   ├── test_pii_sanitizer.py          # Unit tests verifying PII redaction and de-anonymization
-│   ├── test_tool_call_validator.py    # Unit tests verifying tool argument validation (SSRF, path traversal)
-│   ├── test_pipeline.py               # Integration tests for FastAPI endpoints
-│   ├── test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
-│   ├── test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
-│   ├── test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
-│   ├── test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
-│   ├── test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
-│   ├── test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
-│   ├── test_pipeline_v28.py           # Integration tests for v2.8.0 capability and RAG poison defenses
-│   ├── test_pipeline_v29.py           # Integration tests for v2.9.0 cost quota, mutation, and isolation defenses
-│   └── test_pipeline_v30.py           # Integration tests for v3.0.0 plan integrity and semantic boundary defenses
-├── docs/
-│   ├── ZERO_TRUST_AGENT_SECURITY.md   # Enterprise architecture for zero-trust autonomous agent governance
-│   ├── OWASP_AGENTIC_AI_TOP_10.md     # OWASP Agentic AI Top 10 threat model & proxy defense mapping
-│   ├── MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous multi-agent zero-trust governance specification
-│   ├── EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
-│   ├── CAPABILITY_SCOPING_AND_RAG_DEFENSE.md # Autonomous capability scoping and RAG poison defense matrix
-│   ├── COST_QUOTA_AND_TENANT_ISOLATION.md   # Cost quota and multi-tenant isolation architecture
-│   └── AGENT_PLAN_INTEGRITY_AND_SEMANTIC_BOUNDARIES.md # Agent plan integrity and semantic boundary architecture
-├── CHANGELOG.md                       # Comprehensive version and release history
-├── vercel.json                        # Root Vercel deployment config with security headers & portal mapping
-└── README.md                          # Architecture documentation, benchmark report, and setup guide
+â”œâ”€â”€ .github/
+â”‚   â””â”€â”€ workflows/
+â”‚       â”œâ”€â”€ ci.yml                     # Linting, unit tests (293/293), and red-team benchmark execution
+â”‚       â””â”€â”€ security-scan.yml          # Vulnerability scanning with Trivy and Gitleaks
+â”œâ”€â”€ docker/
+â”‚   â”œâ”€â”€ docker-compose.yml             # Security Proxy, Mock LLM backend, and Prometheus/Grafana
+â”‚   â”œâ”€â”€ Dockerfile                     # Multi-stage production container
+â”‚   â”œâ”€â”€ prometheus.yml                 # Prometheus scrape configuration
+â”‚   â””â”€â”€ .env.example                   # Example environment variables
+â”œâ”€â”€ docs/
+â”‚   â”œâ”€â”€ THREAT_MODEL.md                # Enterprise STRIDE & OWASP Top 10 threat model specification
+â”‚   â”œâ”€â”€ INCIDENT_RESPONSE_PLAYBOOK.md  # SOC triage and AI security incident response runbook
+â”‚   â”œâ”€â”€ PRODUCTION_HARDENING_GUIDE.md  # Enterprise production deployment & zero-trust hardening guide
+â”‚   â”œâ”€â”€ ZERO_TRUST_AGENT_SECURITY.md   # Enterprise zero-trust agentic AI security specification
+â”‚   â”œâ”€â”€ OWASP_AGENTIC_AI_TOP_10.md     # OWASP Top 10 for Agentic AI architecture specification & runbook
+â”‚   â””â”€â”€ MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous Multi-Agent Zero-Trust Governance specification
+â”œâ”€â”€ portal/                            # Interactive Obsidian Amber Web Showcase & Live Simulator
+â”‚   â”œâ”€â”€ index.html                     # Full showcase interface (OWASP Top 10, Simulator, Benchmark Table)
+â”‚   â”œâ”€â”€ styles.css                     # Obsidian Amber / Molten Plasma theme styling & responsive grid
+â”‚   â”œâ”€â”€ app.js                         # In-browser guardrails execution engine & live telemetry
+â”‚   â””â”€â”€ vercel.json                    # Subdirectory Vercel deployment configuration
+â”œâ”€â”€ proxy/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ main.py                        # FastAPI application exposing OpenAI-compatible /v1/chat/completions
+â”‚   â”œâ”€â”€ config.py                      # Proxy configuration (thresholds, enabled guards, upstream LLM URL)
+â”‚   â”œâ”€â”€ pipeline.py                    # Interceptor pipeline coordinating sequential inbound & outbound checks
+â”‚   â”œâ”€â”€ middleware/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â””â”€â”€ security_headers.py        # Strict HTTP security headers and anti-caching middleware
+â”‚   â”œâ”€â”€ guards/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ prompt_injection.py        # Multi-layered injection detector (signatures, delimiters, base64)
+â”‚   â”‚   â”œâ”€â”€ canary_reflection_attenuation_guard.py # Fuzzy canary Levenshtein reflection attenuation guard
+â”‚   â”‚   â”œâ”€â”€ shadow_demonstration_guard.py # Shadow in-context few-shot demonstration and hijack guard
+â”‚   â”‚   â”œâ”€â”€ egress_domain_allowlist_guard.py # Agent tool egress domain allowlist and SSRF destination guard
+â”‚   â”‚   â”œâ”€â”€ param_redos_guard.py       # Catastrophic parameter ReDoS and regex complexity guard
+â”‚   â”‚   â”œâ”€â”€ session_replay_guard.py    # Session anti-replay nonce and sliding-window tool validator
+â”‚   â”‚   â”œâ”€â”€ epistemic_uncertainty_guard.py # Epistemic authority hallucination and ungrounded claim guard
+â”‚   â”‚   â”œâ”€â”€ agent_tool_rbac_guard.py   # Agent tool role-based access control and privilege scoping guard
+â”‚   â”‚   â”œâ”€â”€ bidi_override_guard.py     # Unicode bidirectional Trojan Source override and spoofing guard
+â”‚   â”‚   â”œâ”€â”€ deserialization_guard.py   # Insecure deserialization and polyglot gadget guard (pickle/yaml/java)
+â”‚   â”‚   â”œâ”€â”€ context_bomb_guard.py      # Context bomb and XML/YAML Billion Laughs expansion DoS guard
+â”‚   â”‚   â”œâ”€â”€ agent_velocity_guard.py    # Agent tool call velocity and burst anomaly limiter
+â”‚   â”‚   â”œâ”€â”€ memory_audit_ledger.py     # Tamper-evident SHA-256 hash-chained agent memory ledger
+â”‚   â”‚   â”œâ”€â”€ context_exfiltration_guard.py # Covert channel markdown image and DNS tunnel exfiltration guard
+â”‚   â”‚   â”œâ”€â”€ tool_param_type_enforcer.py# Agent tool parameter typing, numerical bounds, and enum enforcer
+â”‚   â”‚   â”œâ”€â”€ canary_vault.py            # Dynamic canary token rotation vault with TTL expiration
+â”‚   â”‚   â”œâ”€â”€ agent_message_signer.py    # Inter-agent message HMAC verification and anti-spoofing guard
+â”‚   â”‚   â”œâ”€â”€ semantic_loop_breaker.py   # Semantic Jaccard overlap agent reasoning deadlock breaker
+â”‚   â”‚   â”œâ”€â”€ memory_poisoning_guard.py  # Agent persistent memory poisoning and context corruption guard
+â”‚   â”‚   â”œâ”€â”€ phonetic_leetspeak_guard.py# Phonetic homophone and multi-character leetspeak deobfuscator
+â”‚   â”‚   â”œâ”€â”€ command_injection_guard.py # Agent tool command injection, chaining, and subshell guard
+â”‚   â”‚   â”œâ”€â”€ token_smuggling_guard.py   # Zero-width steganography and invisible token smuggling guard
+â”‚   â”‚   â”œâ”€â”€ recursion_budget_guard.py  # Agent tool recursion depth and compute budget quota guard
+â”‚   â”‚   â”œâ”€â”€ canary_redactor.py         # Active canary token redaction and dynamic outbound scrubber
+â”‚   â”‚   â”œâ”€â”€ homoglyph_detector.py      # Unicode homoglyphs and leetspeak deobfuscation engine
+â”‚   â”‚   â”œâ”€â”€ secret_entropy_scanner.py  # Shannon entropy analyzer for high-entropy credential leaks
+â”‚   â”‚   â”œâ”€â”€ anomaly_detector.py        # Token repetition and structural anomaly detector
+â”‚   â”‚   â”œâ”€â”€ multilingual_guard.py      # Cross-lingual jailbreak and evasion detection
+â”‚   â”‚   â”œâ”€â”€ canary_generator.py        # Cryptographically signed dynamic HMAC canary token manager
+â”‚   â”‚   â”œâ”€â”€ mcp_validator.py           # Model Context Protocol (MCP) tool execution validator
+â”‚   â”‚   â”œâ”€â”€ sql_nosql_guard.py         # SQL & NoSQL injection detector for agent database queries
+â”‚   â”‚   â”œâ”€â”€ code_sandbox_policy.py     # AST code sandbox policy inspector for generated scripts
+â”‚   â”‚   â”œâ”€â”€ differential_leak_guard.py # Differential n-gram system prompt leakage detector
+â”‚   â”‚   â”œâ”€â”€ hallucination_verifier.py  # RAG hallucination and citation grounding verifier
+â”‚   â”‚   â”œâ”€â”€ token_padding_guard.py     # Whitespace padding and delimiter flood evasion detector
+â”‚   â”‚   â”œâ”€â”€ watermark_detector.py      # Corporate classification and sensitive document watermark guard
+â”‚   â”‚   â”œâ”€â”€ network_guard.py           # CIDR subnet blocklist and egress SSRF perimeter guard
+â”‚   â”‚   â”œâ”€â”€ nested_unpack_guard.py     # Recursive multi-tier encoding unpacker (URL, HTML, Base64)
+â”‚   â”‚   â”œâ”€â”€ goal_drift_detector.py     # Agent goal drift and persona hijacking detector
+â”‚   â”‚   â”œâ”€â”€ json_schema_enforcer.py    # Structured JSON schema validator and prototype pollution enforcer
+â”‚   â”‚   â”œâ”€â”€ pii_synthetic_generator.py # Format-preserving synthetic PII substitution engine
+â”‚   â”‚   â”œâ”€â”€ pii_sanitizer.py           # Detects and anonymizes PII (emails, API keys, cards with Luhn check)
+â”‚   â”‚   â”œâ”€â”€ system_prompt_guard.py     # Detects canary leaks and system prompt extraction attempts
+â”‚   â”‚   â”œâ”€â”€ output_sanitizer.py        # Inspects model responses for credential leaks and hazardous shell commands
+â”‚   â”‚   â”œâ”€â”€ tool_call_validator.py     # Validates function/tool arguments to prevent SSRF and path traversal
+â”‚   â”‚   â””â”€â”€ rate_limiter.py            # Sliding-window token-bucket rate limiter
+â”‚   â”œâ”€â”€ resilience/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â””â”€â”€ circuit_breaker.py         # Upstream LLM circuit breaker and fallback router
+â”‚   â”œâ”€â”€ telemetry/
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ audit_logger.py            # Emits structured JSON audit logs and Prometheus metrics
+â”‚   â”‚   â””â”€â”€ siem_forwarder.py          # RFC 5424 Syslog and Common Event Format (CEF) SIEM exporter
+â”‚   â””â”€â”€ mock_llm.py                    # Lightweight local mock upstream LLM server for zero-cost offline testing
+â”œâ”€â”€ red_teaming/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ runner.py                      # Automated adversarial fuzzer sending attack payloads through proxy
+â”‚   â”œâ”€â”€ datasets/
+â”‚   â”‚   â”œâ”€â”€ prompt_injections.json     # 25 curated attack payloads (DAN jailbreaks, roleplay, delimiters)
+â”‚   â”‚   â”œâ”€â”€ pii_test_cases.json        # Synthetic PII inputs (credit cards with Luhn, SSNs, AWS keys)
+â”‚   â”‚   â”œâ”€â”€ benign_prompts.json        # 15 non-malicious user queries to measure False Positive Rate (FPR)
+â”‚   â”‚   â”œâ”€â”€ advanced_attacks.json      # 15 advanced vectors (homoglyphs, MCP tool abuse, multilingual)
+â”‚   â”‚   â”œâ”€â”€ database_and_ast_attacks.json # 15 vectors for SQL injection, AST breakout, and token padding
+â”‚   â”‚   â”œâ”€â”€ nested_and_drift_attacks.json # 16 vectors for nested container evasions and goal drift
+â”‚   â”‚   â”œâ”€â”€ smuggling_and_command_attacks.json # 15 vectors for token smuggling, command chaining, and phonetic evasion
+â”‚   â”‚   â”œâ”€â”€ agentic_memory_and_exfil_attacks.json # 15 vectors for memory poisoning, context exfil, and tool typing
+â”‚   â”‚   â”œâ”€â”€ agentic_rbac_bidi_and_bombs.json # 15 vectors for tool RBAC, Bidi overrides, and context bombs
+â”‚   â”‚   â”œâ”€â”€ agentic_shadow_and_replay_attacks.json # 15 vectors for shadow few-shot, egress SSRF, ReDoS, and replay
+â”‚   â”‚   â””â”€â”€ agentic_rag_and_capability_attacks.json # 15 vectors for RAG poison, zip bombs, and semantic evasion
+â”‚   â”œâ”€â”€ evaluate_benchmark.py          # Statistical evaluation engine computing Precision, Recall, and F1
+â”‚   â””â”€â”€ export_report.py               # Exports compliance dashboard (HTML/Markdown) for SOC2/NIST AI RMF
+â”œâ”€â”€ tests/
+â”‚   â”œâ”€â”€ test_prompt_injection.py       # Unit tests validating injection detection edge cases
+â”‚   â”œâ”€â”€ test_capability_token_guard.py # Unit tests for ephemeral capability token scoping guard
+â”‚   â”œâ”€â”€ test_rag_poison_guard.py       # Unit tests for indirect RAG document poison and canary guard
+â”‚   â”œâ”€â”€ test_decompression_bomb_guard.py # Unit tests for decompression bomb and zip-slip guard
+â”‚   â”œâ”€â”€ test_semantic_similarity_guard.py # Unit tests for semantic similarity evasion guard
+â”‚   â”œâ”€â”€ test_param_differential_guard.py # Unit tests for tool parameter semantic differential validator
+â”‚   â”œâ”€â”€ test_agent_attestation_guard.py # Unit tests for agent cryptographic attestation guard
+â”‚   â”œâ”€â”€ test_state_rollback_guard.py   # Unit tests for speculative execution rollback and state undo ledger
+â”‚   â”œâ”€â”€ test_canary_reflection_attenuation_guard.py # Unit tests for fuzzy canary reflection attenuation
+â”‚   â”œâ”€â”€ test_shadow_demonstration_guard.py # Unit tests for shadow few-shot demonstration guard
+â”‚   â”œâ”€â”€ test_egress_domain_allowlist_guard.py # Unit tests for agent egress domain allowlist guard
+â”‚   â”œâ”€â”€ test_param_redos_guard.py      # Unit tests for parameter ReDoS complexity guard
+â”‚   â”œâ”€â”€ test_session_replay_guard.py   # Unit tests for session anti-replay nonce validator
+â”‚   â”œâ”€â”€ test_epistemic_uncertainty_guard.py # Unit tests for epistemic authority and ungrounded claim guard
+â”‚   â”œâ”€â”€ test_agent_tool_rbac_guard.py  # Unit tests for tool role-based access control and privilege scoping
+â”‚   â”œâ”€â”€ test_bidi_override_guard.py    # Unit tests for Unicode Bidi override and Trojan Source detection
+â”‚   â”œâ”€â”€ test_deserialization_guard.py  # Unit tests for deserialization and polyglot gadget detection
+â”‚   â”œâ”€â”€ test_context_bomb_guard.py     # Unit tests for context bombs and recursive expansion DoS guard
+â”‚   â”œâ”€â”€ test_agent_velocity_guard.py   # Unit tests for tool invocation velocity and burst anomaly limiter
+â”‚   â”œâ”€â”€ test_memory_audit_ledger.py    # Unit tests for SHA-256 hash-chained memory audit ledger
+â”‚   â”œâ”€â”€ test_context_exfiltration_guard.py # Unit tests for covert markdown image & DNS exfiltration
+â”‚   â”œâ”€â”€ test_tool_param_type_enforcer.py # Unit tests for tool parameter typing and bounds enforcement
+â”‚   â”œâ”€â”€ test_canary_vault.py           # Unit tests for dynamic canary rotation and TTL expiration
+â”‚   â”œâ”€â”€ test_agent_message_signer.py   # Unit tests for inter-agent HMAC verification and signing
+â”‚   â”œâ”€â”€ test_semantic_loop_breaker.py  # Unit tests for semantic agent loop & deadlock breaker
+â”‚   â”œâ”€â”€ test_memory_poisoning_guard.py # Unit tests for agent memory poisoning & corruption guard
+â”‚   â”œâ”€â”€ test_phonetic_leetspeak_guard.py # Unit tests for phonetic and multi-character leet deobfuscation
+â”‚   â”œâ”€â”€ test_command_injection_guard.py  # Unit tests for tool command injection and chaining guard
+â”‚   â”œâ”€â”€ test_token_smuggling_guard.py  # Unit tests for token smuggling and zero-width steganography
+â”‚   â”œâ”€â”€ test_recursion_budget_guard.py # Unit tests for agent recursion depth and quota guard
+â”‚   â”œâ”€â”€ test_canary_redactor.py        # Unit tests for active canary redaction and leak scrubber
+â”‚   â”œâ”€â”€ test_homoglyph_detector.py     # Unit tests for homoglyph & leetspeak deobfuscation
+â”‚   â”œâ”€â”€ test_secret_entropy_scanner.py # Unit tests for Shannon entropy secret scanner
+â”‚   â”œâ”€â”€ test_anomaly_detector.py       # Unit tests for token repetition and anomaly detector
+â”‚   â”œâ”€â”€ test_multilingual_guard.py     # Unit tests for multilingual adversarial detection
+â”‚   â”œâ”€â”€ test_canary_generator.py       # Unit tests for dynamic canary token generation & verification
+â”‚   â”œâ”€â”€ test_mcp_validator.py          # Unit tests for MCP schema and tool execution validation
+â”‚   â”œâ”€â”€ test_sql_nosql_guard.py        # Unit tests for SQL and NoSQL injection guard
+â”‚   â”œâ”€â”€ test_code_sandbox_policy.py    # Unit tests for AST code sandbox policy inspector
+â”‚   â”œâ”€â”€ test_differential_leak_guard.py# Unit tests for differential n-gram prompt leakage detector
+â”‚   â”œâ”€â”€ test_hallucination_verifier.py # Unit tests for RAG hallucination and citation verifier
+â”‚   â”œâ”€â”€ test_token_padding_guard.py    # Unit tests for token padding and delimiter evasion guard
+â”‚   â”œâ”€â”€ test_watermark_detector.py     # Unit tests for sensitive document watermark detector
+â”‚   â”œâ”€â”€ test_security_headers.py       # Unit tests for HTTP security headers and cache control middleware
+â”‚   â”œâ”€â”€ test_network_guard.py          # Unit tests for CIDR blocklist and perimeter SSRF guard
+â”‚   â”œâ”€â”€ test_pii_synthetic_generator.py# Unit tests for format-preserving synthetic PII engine
+â”‚   â”œâ”€â”€ test_json_schema_enforcer.py   # Unit tests for JSON schema and prototype pollution enforcer
+â”‚   â”œâ”€â”€ test_nested_unpack_guard.py    # Unit tests for recursive multi-tier decoding unpack guard
+â”‚   â”œâ”€â”€ test_goal_drift_detector.py    # Unit tests for agent goal drift and persona hijacking detector
+â”‚   â”œâ”€â”€ test_siem_forwarder.py         # Unit tests for CEF and RFC 5424 SIEM telemetry forwarder
+â”‚   â”œâ”€â”€ test_circuit_breaker.py        # Unit tests for upstream LLM circuit breaker
+â”‚   â”œâ”€â”€ test_pii_sanitizer.py          # Unit tests verifying PII redaction and de-anonymization
+â”‚   â”œâ”€â”€ test_tool_call_validator.py    # Unit tests verifying tool argument validation (SSRF, path traversal)
+â”‚   â”œâ”€â”€ test_pipeline.py               # Integration tests for FastAPI endpoints
+â”‚   â”œâ”€â”€ test_pipeline_extended.py      # Integration tests for extended defense pipeline guards
+â”‚   â”œâ”€â”€ test_pipeline_advanced.py      # Integration tests for advanced nested unpacking and schema guards
+â”‚   â”œâ”€â”€ test_pipeline_v24.py           # Integration tests for v2.4.0 smuggling and command injection guards
+â”‚   â”œâ”€â”€ test_pipeline_v25.py           # Integration tests for v2.5.0 memory poisoning and exfiltration defenses
+â”‚   â”œâ”€â”€ test_pipeline_v26.py           # Integration tests for v2.6.0 RBAC, Bidi, and context bomb defenses
+â”‚   â”œâ”€â”€ test_pipeline_v27.py           # Integration tests for v2.7.0 perimeter and anti-replay defenses
+â”‚   â”œâ”€â”€ test_pipeline_v28.py           # Integration tests for v2.8.0 capability and RAG poison defenses
+â”‚   â”œâ”€â”€ test_pipeline_v29.py           # Integration tests for v2.9.0 cost quota, mutation, and isolation defenses
+â”‚   â””â”€â”€ test_pipeline_v30.py           # Integration tests for v3.0.0 plan integrity and semantic boundary defenses
+â”œâ”€â”€ docs/
+â”‚   â”œâ”€â”€ ZERO_TRUST_AGENT_SECURITY.md   # Enterprise architecture for zero-trust autonomous agent governance
+â”‚   â”œâ”€â”€ OWASP_AGENTIC_AI_TOP_10.md     # OWASP Agentic AI Top 10 threat model & proxy defense mapping
+â”‚   â”œâ”€â”€ MULTI_AGENT_ZERO_TRUST_GOVERNANCE.md # Autonomous multi-agent zero-trust governance specification
+â”‚   â”œâ”€â”€ EGRESS_PERIMETER_AND_ANTI_REPLAY.md  # Egress perimeter, anti-replay, and canary attenuation architecture
+â”‚   â”œâ”€â”€ CAPABILITY_SCOPING_AND_RAG_DEFENSE.md # Autonomous capability scoping and RAG poison defense matrix
+â”‚   â”œâ”€â”€ COST_QUOTA_AND_TENANT_ISOLATION.md   # Cost quota and multi-tenant isolation architecture
+â”‚   â””â”€â”€ AGENT_PLAN_INTEGRITY_AND_SEMANTIC_BOUNDARIES.md # Agent plan integrity and semantic boundary architecture
+â”œâ”€â”€ CHANGELOG.md                       # Comprehensive version and release history
+â”œâ”€â”€ vercel.json                        # Root Vercel deployment config with security headers & portal mapping
+â””â”€â”€ README.md                          # Architecture documentation, benchmark report, and setup guide
 ```
 
 ---
 
-## 🚀 Quickstart Guide
+## ðŸš€ Quickstart Guide
 
 ### Option 1: Run Locally via Docker Compose ($0 Local Stack)
 
@@ -290,7 +290,7 @@ python -m uvicorn proxy.main:app --host 0.0.0.0 --port 8080 --reload
 
 ---
 
-## 🧪 Live Demonstration: Curl Commands
+## ðŸ§ª Live Demonstration: Curl Commands
 
 ### 1. Benign Request (Allowed Pass-Through)
 
@@ -430,9 +430,9 @@ X-Security-Action: BLOCKED
 
 ---
 
-## 📊 Automated Red-Teaming Benchmark Results
+## ðŸ“Š Automated Red-Teaming Benchmark Results
 
-The automated fuzzer executes 426 adversarial payloads across 16 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
+The automated fuzzer executes 512 adversarial payloads across 16 distinct categories, verifying resilience against OWASP Top 10 for LLMs and OWASP Agentic AI vectors. Run the red-team benchmark at any time:
 
 ```bash
 python red_teaming/evaluate_benchmark.py
@@ -473,7 +473,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 | Security Attack Block Rate (Recall)           |  99.62%                     |
 | Benign Query Precision                        | 100.00%                     |
 | Harmonic Mean (F1 Score)                      | 0.9981                      |
-| Total Adversarial Test Cases Executed         | 426                          |
+| Total Adversarial Test Cases Executed         | 512                          |
 | Overall Test Suite Pass Rate                  | 100.00%                     |
 +------------------------------------------------------------------------------+
 
@@ -484,7 +484,7 @@ Datasets: Injections (25), Benign (12), PII (8), Tools (4), Advanced (19), DB/AS
 
 ---
 
-## 📈 Observability & Structured Telemetry
+## ðŸ“ˆ Observability & Structured Telemetry
 
 All requests, decisions, and security alerts emit structured JSON records into `audit_logs.jsonl`:
 
@@ -511,7 +511,7 @@ All requests, decisions, and security alerts emit structured JSON records into `
 
 ---
 
-## 🛠️ Developer Tooling & CLI Utilities
+## ðŸ› ï¸ Developer Tooling & CLI Utilities
 
 ### 1. Interactive Guardrails Terminal Inspector
 Inspect any prompt directly from the terminal without starting an external client:
@@ -548,7 +548,7 @@ make report
 ### 4. Interactive Frontend Web Portal & Vercel Deployment
 The repository includes a modern web portal styled in an **Obsidian Amber & Molten Plasma** theme (`#f59e0b`, `#ef4444`, `#07070b`). It features an in-browser live guardrails simulator (with real-time Luhn verification, injection scoring, and SSRF detection), an OWASP Top 10 interactive grid, benchmark telemetry cards, and portfolio navigation.
 
-- **🌐 Live Production URL:** [https://agentic-ai-security-firewallllm-gua.vercel.app](https://agentic-ai-security-firewallllm-gua.vercel.app)
+- **ðŸŒ Live Production URL:** [https://agentic-ai-security-firewallllm-gua.vercel.app](https://agentic-ai-security-firewallllm-gua.vercel.app)
 
 #### View Locally:
 ```bash
@@ -573,7 +573,7 @@ The project contains pre-configured `vercel.json` files with strict production s
 
 ---
 
-## 🧩 Portfolio Context: Complete 10-Project Cybersecurity Portfolio
+## ðŸ§© Portfolio Context: Complete 10-Project Cybersecurity Portfolio
 
 With the completion of this repository, the 10-part enterprise cybersecurity portfolio spans all essential modern domains:
 
@@ -592,6 +592,6 @@ With the completion of this repository, the 10-part enterprise cybersecurity por
 
 ---
 
-## 📄 License
+## ðŸ“„ License
 
 This project is licensed under the terms of the [MIT License](LICENSE).
