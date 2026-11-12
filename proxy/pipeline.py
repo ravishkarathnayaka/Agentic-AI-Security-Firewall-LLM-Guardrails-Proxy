@@ -325,7 +325,19 @@ class SecurityPipeline:
         if self.settings.ENABLE_ZK_AUDIT_ATTESTATION_LOG:
             self.zk_audit_attestation_log.record_attestation("INBOUND_INSPECTION", "VERIFIED", {"request_id": request_id})
 
-                # v4.2 Post-Quantum Key Encapsulation Guard
+                        # v4.2 Contextual RAG Memory Integrity Guard
+        if getattr(self.settings, "ENABLE_RAG_MEMORY_INTEGRITY_GUARD", True) and "retrieved_chunks" in payload:
+            rag_res = self.rag_memory_integrity_guard.validate_chunks(payload.get("retrieved_chunks", []))
+            if rag_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": rag_res.violation_code or "rag_corpus_poisoning", "message": f"RAG chunks poisoned: {rag_res.details}", "guard": "rag_memory_integrity_guard"}}, context=context)
+
+        # v4.2 Agent Delegation Chain Guard
+        if getattr(self.settings, "ENABLE_AGENT_DELEGATION_CHAIN_GUARD", True) and "delegation_chain" in payload:
+            del_res = self.agent_delegation_chain_guard.verify_chain(payload.get("delegation_chain", []), payload.get("requested_action", "default_action"))
+            if del_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": del_res.violation_code or "delegation_chain_rejected", "message": f"Delegation chain rejected: {del_res.details}", "guard": "agent_delegation_chain_guard"}}, context=context)
+
+        # v4.2 Post-Quantum Key Encapsulation Guard
         if getattr(self.settings, "ENABLE_PQC_KEM_GUARD", True) and "pqc_handshake" in payload:
             pqc_res = self.pqc_kem_guard.verify_handshake(payload.get("pqc_handshake", {}))
             if pqc_res.is_blocked:
