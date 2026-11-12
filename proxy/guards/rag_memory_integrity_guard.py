@@ -32,6 +32,7 @@ class RAGMemoryIntegrityGuard:
     ]
 
     def __init__(self, max_outlier_distance: float = 0.85):
+        self._centroid_cache = {}  # Streamlined vector distance cache
         self.max_outlier_distance = max_outlier_distance
 
     def validate_chunks(self, retrieved_chunks: List[Dict[str, Any]]) -> RAGIntegrityResult:
