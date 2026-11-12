@@ -325,7 +325,19 @@ class SecurityPipeline:
         if self.settings.ENABLE_ZK_AUDIT_ATTESTATION_LOG:
             self.zk_audit_attestation_log.record_attestation("INBOUND_INSPECTION", "VERIFIED", {"request_id": request_id})
 
-                        # v4.2 Contextual RAG Memory Integrity Guard
+                                # v4.2 Speculative Decoding & Draft Token Poisoning Guard
+        if getattr(self.settings, "ENABLE_SPECULATIVE_DECODING_GUARD", True) and "draft_tokens" in payload:
+            spec_res = self.speculative_decoding_guard.verify_draft_sequence(payload.get("draft_tokens", []), payload.get("entropy_scores", []))
+            if spec_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": spec_res.violation_code or "speculative_token_poison", "message": f"Draft tokens blocked: {spec_res.details}", "guard": "speculative_decoding_guard"}}, context=context)
+
+        # v4.2 Multimodal Deepfake Guard
+        if getattr(self.settings, "ENABLE_MULTIMODAL_DEEPFAKE_GUARD", True) and "multimodal_payload" in payload:
+            mm_res = self.multimodal_deepfake_guard.inspect_multimodal_payload(payload.get("multimodal_payload", {}))
+            if mm_res.is_blocked:
+                return InboundPipelineResult(is_allowed=False, error_response={"error": {"type": "security_policy_violation", "code": mm_res.violation_code or "multimodal_deepfake_rejected", "message": f"Multimodal deepfake blocked: {mm_res.details}", "guard": "multimodal_deepfake_guard"}}, context=context)
+
+        # v4.2 Contextual RAG Memory Integrity Guard
         if getattr(self.settings, "ENABLE_RAG_MEMORY_INTEGRITY_GUARD", True) and "retrieved_chunks" in payload:
             rag_res = self.rag_memory_integrity_guard.validate_chunks(payload.get("retrieved_chunks", []))
             if rag_res.is_blocked:
