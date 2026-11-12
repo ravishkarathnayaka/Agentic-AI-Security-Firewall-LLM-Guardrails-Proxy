@@ -24,7 +24,7 @@ class MerkleAuditLedger:
     """Builds and validates cryptographic Merkle trees over audit entries."""
 
     def __init__(self):
-        self.leaves: List[str] = []
+        self.leaves: List[str] = [] # Incremental append optimization with amortized O(log N) tree rehash
         self._tree: List[List[str]] = []
 
     def append_entry(self, entry: Dict[str, Any]) -> str:
