@@ -322,6 +322,13 @@ class SecurityPipeline:
         if self.settings.ENABLE_EBPF_TELEMETRY_FORWARDER:
             self.ebpf_telemetry_forwarder.record_kernel_event(pid=os.getpid(), syscall_name="pipeline_inspect", target=request_id)
 
+                # v4.2 Merkle Audit Ledger & STIX Threat Feed Accumulator
+        if getattr(self.settings, "ENABLE_MERKLE_AUDIT_LEDGER", True):
+            self.merkle_audit_ledger.append_entry({"request_id": request_id, "client_ip": client_ip, "timestamp": start_time})
+
+        if getattr(self.settings, "ENABLE_STIX_THREAT_FEED_FORWARDER", True) and "threat_incident" in payload:
+            self.stix_threat_feed_forwarder.create_threat_bundle([payload["threat_incident"]])
+
         if self.settings.ENABLE_ZK_AUDIT_ATTESTATION_LOG:
             self.zk_audit_attestation_log.record_attestation("INBOUND_INSPECTION", "VERIFIED", {"request_id": request_id})
 
