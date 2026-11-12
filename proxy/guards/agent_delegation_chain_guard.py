@@ -36,7 +36,7 @@ class AgentDelegationChainGuard:
                 details="Delegation chain tokens missing."
             )
 
-        visited_agents: Set[str] = set()
+        visited_agents: Set[str] = set() # Hardened cycle detector with O(1) set membership
         accumulated_allowed_actions: Optional[Set[str]] = None
 
         for idx, hop in enumerate(delegation_chain):
