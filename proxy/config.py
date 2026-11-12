@@ -508,6 +508,30 @@ class ProxySettings(BaseSettings):
         default=True,
         description="Enable agent delegation chain and verifiable capability token guard"
     )
+    ENABLE_ADAPTIVE_TIMING_JITTER_GUARD: bool = Field(
+        default=True,
+        description="Enable adaptive latency jitter and side-channel timing defense guard"
+    )
+    ENABLE_MULTIMODAL_DEEPFAKE_GUARD: bool = Field(
+        default=True,
+        description="Enable multimodal deepfake and synthetic voice guard"
+    )
+    ENABLE_SPECULATIVE_DECODING_GUARD: bool = Field(
+        default=True,
+        description="Enable speculative decoding and draft token poisoning guard"
+    )
+    ENABLE_POLICY_SELF_HEALING_GUARD: bool = Field(
+        default=True,
+        description="Enable autonomous policy self-healing and dynamic remediation guard"
+    )
+    ENABLE_STIX_THREAT_FEED_FORWARDER: bool = Field(
+        default=True,
+        description="Enable STIX/TAXII 2.1 threat feed observable stream"
+    )
+    ENABLE_MERKLE_AUDIT_LEDGER: bool = Field(
+        default=True,
+        description="Enable quantum-resistant Merkle tree immutable audit ledger"
+    )
     ENABLE_ZK_AUDIT_ATTESTATION_LOG: bool = Field(
         default=True,
         description="Enable zero-knowledge audit attestation log accumulator"
