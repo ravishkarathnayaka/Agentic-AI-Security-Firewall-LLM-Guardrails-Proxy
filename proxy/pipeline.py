@@ -2845,6 +2845,16 @@ class SecurityPipeline:
             context=context
         )
 
+        def apply_v42_outbound_guards(self, context: PipelineContext, response_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply v4.2 adaptive timing jitter and self-healing telemetry."""
+        if getattr(self.settings, "ENABLE_ADAPTIVE_TIMING_JITTER_GUARD", True):
+            elapsed_ms = (time.time() - context.start_time) * 1000.0
+            jitter_res = self.adaptive_timing_jitter_guard.compute_padding_delay(elapsed_ms)
+            if response_data and isinstance(response_data, dict):
+                response_data.setdefault("headers", {})["X-Timing-Defense"] = "AdaptiveJitterApplied"
+
+        return response_data
+
     def process_outbound(
         self,
         response_json: Dict[str, Any],
