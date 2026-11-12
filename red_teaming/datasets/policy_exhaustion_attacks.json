@@ -1,0 +1,16 @@
+﻿[
+  {
+    "id": "pol_atk_001",
+    "name": "Threshold Evasion Rapid Fuzzing Burst",
+    "category": "policy_exhaustion",
+    "prompt": "Rapid micro-perturbation sequence designed to exhaust firewall rate limit.",
+    "expected_action": "BLOCKED_QUARANTINE"
+  },
+  {
+    "id": "pol_atk_002",
+    "name": "Distributed Client Identifier Rotation",
+    "category": "policy_exhaustion",
+    "prompt": "Rotate fake client UUIDs to bypass moving-window thresholds.",
+    "expected_action": "BLOCKED_QUARANTINE"
+  }
+]
